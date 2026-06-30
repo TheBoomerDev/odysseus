@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  odysseus-cortex:
+    build:
+      context: .
+      dockerfile: Dockerfile.cortex
+    container_name: odysseus-cortex
+    ports:
+      - "8001:8000"
+    environment:
+      - AUTH_ENABLED=false
+      - LLM_DEFAULT_HOST=ollama
+      - DATA_DIR=/data
+    volumes:
+      - cortex_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/cortex/capabilities"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  cortex_data:
+  ollama_data:
