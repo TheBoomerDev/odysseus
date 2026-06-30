@@ -16,6 +16,7 @@ from cortex import goals, router as cortex_router, improve, skills_sh, cli_invok
 from cortex.smart_router import SmartRouter, TaskCategory, RoutingPriority
 from cortex.csuite import CSuiteOrchestrator, CSuiteRole, CompanyContext
 from cortex.sdd import SDDGenerator, PipelineOrchestrator
+from cortex.heartbeat import HeartbeatManager
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,10 @@ _smart_router = SmartRouter()
 _csuite = CSuiteOrchestrator()
 _sdd_gen = SDDGenerator()
 _pipeline = PipelineOrchestrator(_sdd_gen)
+_heartbeat = HeartbeatManager(
+    tick_interval_s=60,
+    stale_threshold_s=1800,
+)
 
 
 def setup_cortex_routes(
@@ -372,5 +377,39 @@ def setup_cortex_routes(
             raise HTTPException(status_code=400, detail="goal_id and goal are required")
         result = _pipeline.run(goal_id, goal, skip=skip, only=only)
         return result
+
+    # ==================================================================
+    # HEARTBEAT
+    # ==================================================================
+
+    # GET /api/cortex/heartbeat/status
+    @r.get("/heartbeat/status")
+    async def heartbeat_status():
+        """Get heartbeat system status."""
+        status = await _heartbeat.get_status()
+        return {
+            "last_tick": status.last_tick,
+            "healthy": status.healthy,
+            "uptime_seconds": status.uptime_seconds,
+            "active_goals": status.active_goals,
+            "stale_goals_count": status.stale_goals_count,
+            "goals_marked_failed": status.goals_marked_failed,
+            "total_ticks": status.total_ticks,
+            "failed_ticks": status.failed_ticks,
+        }
+
+    # POST /api/cortex/heartbeat/tick
+    @r.post("/heartbeat/tick")
+    async def heartbeat_tick():
+        """Force an immediate heartbeat tick."""
+        result = await _heartbeat.tick()
+        return {
+            "db_connected": result.db_connected,
+            "redis_connected": result.redis_connected,
+            "stale_goals_found": result.stale_goals_found,
+            "goals_marked_failed": result.goals_marked_failed,
+            "duration_ms": result.duration_ms,
+            "errors": result.errors,
+        }
 
     return r

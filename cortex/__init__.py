@@ -21,6 +21,7 @@ from . import cli_invoker
 from . import smart_router
 from . import csuite
 from . import sdd
+from . import heartbeat
 
 __all__ = ["goals", "cortex_router", "improve", "skills_sh", "cli_invoker",
-           "smart_router", "csuite", "sdd"]
+           "smart_router", "csuite", "sdd", "heartbeat"]
