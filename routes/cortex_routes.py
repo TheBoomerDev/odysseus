@@ -58,7 +58,9 @@ def setup_cortex_routes(
             "smart_router": {"models": 24, "providers": 8, "categories": 9},
             "csuite": {"roles": 6, "query": True, "context": True},
             "sdd": {"generate": True, "pipeline_steps": 7, "llm_generate": _sdd_gen._llm_available},
-            "heartbeat": {"status": True, "tick": True, "interval_s": 60},
+            "heartbeat": {"status": True, "tick": True, "interval_s": 60, "ws_notify": True},
+            "integration": {"chat_routing": True, "goal_scheduling": True,
+                           "sdd_llm": _sdd_gen._llm_available, "heartbeat_ws": True},
         }
 
     # ------------------------------------------------------------------
@@ -678,4 +680,61 @@ def setup_cortex_routes(
             }
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+    # ==================================================================
+    # CHAT INTEGRATION (Fase 6)
+    # ==================================================================
+
+    # POST /api/cortex/chat/route
+    @r.post("/chat/route")
+    async def chat_route_message(body: dict):
+        """Route a chat message to the best model using SmartRouter."""
+        from cortex.integration import route_chat_message
+        message = body.get("message", "")
+        if not message.strip():
+            raise HTTPException(status_code=400, detail="message is required")
+        result = route_chat_message(
+            message,
+            current_model=body.get("current_model", ""),
+        )
+        return result
+
+    # POST /api/cortex/goals/schedule
+    @r.post("/goals/schedule")
+    async def goal_decompose_and_schedule(body: dict):
+        """Decompose a goal and create ScheduledTasks."""
+        from cortex.integration import decompose_and_schedule
+        goal_id = body.get("goal_id", "")
+        goal_text = body.get("goal", "")
+        if not goal_id or not goal_text:
+            raise HTTPException(status_code=400, detail="goal_id and goal are required")
+        try:
+            result = decompose_and_schedule(
+                goal_id, goal_text,
+                owner=body.get("owner", "admin"),
+            )
+            return result
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    # POST /api/cortex/sdd/generate-with-odysseus-llm
+    @r.post("/sdd/generate-with-odysseus-llm")
+    async def sdd_generate_with_odysseus_llm(body: dict):
+        """Generate SDD docs using Odysseus LLM via integration layer."""
+        from cortex.integration import generate_sdd_with_odysseus_llm
+        goal_id = body.get("goal_id", "")
+        goal_text = body.get("goal", "")
+        if not goal_id or not goal_text:
+            raise HTTPException(status_code=400, detail="goal_id and goal are required")
+        result = generate_sdd_with_odysseus_llm(goal_id, goal_text)
+        return result
+
+    # POST /api/cortex/heartbeat/check
+    @r.post("/heartbeat/check")
+    async def heartbeat_run_check():
+        """Run heartbeat health check and notify via WebSocket."""
+        from cortex.integration import heartbeat_health_check
+        result = await heartbeat_health_check()
+        return result
+
     return r
