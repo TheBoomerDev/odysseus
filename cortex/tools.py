@@ -161,3 +161,266 @@ async def do_router_categories(content: str, owner: Optional[str] = None) -> Dic
     """
     categories = _smart_router.list_categories()
     return {"categories": categories}
+
+
+# ==================================================================
+# Goal Tracking Tools (Fase 4)
+# ==================================================================
+
+_tracker_instance = None
+
+
+def _get_tracker():
+    global _tracker_instance
+    if _tracker_instance is None:
+        from cortex.goal_state import GoalTracker
+        _tracker_instance = GoalTracker()
+    return _tracker_instance
+
+
+async def do_create_goal(content: str, owner: Optional[str] = None) -> Dict:
+    """Create a new tracked goal with state machine lifecycle.
+
+    Creates a goal in CREATED state and auto-advances to ANALYZING.
+    The goal can then be transitioned through: analyzing, planning,
+    decomposing, assigning, executing, verifying, completed/failed.
+
+    Args:
+        content: JSON with keys:
+            goal_id (str): Unique identifier for the goal
+            goal (str): The goal description
+            context (dict, optional): Initial context data
+    """
+    try:
+        args = json.loads(content) if isinstance(content, str) else content
+    except (json.JSONDecodeError, TypeError):
+        return {"error": "Invalid JSON", "exit_code": 1}
+
+    goal_id = args.get("goal_id", "")
+    goal = args.get("goal", "")
+    if not goal_id or not goal:
+        return {"error": "goal_id and goal are required", "exit_code": 1}
+
+    try:
+        from cortex.goals import decompose_and_track
+        tracker = _get_tracker()
+        session = decompose_and_track(goal_id, goal, tracker, context=args.get("context"))
+        return {
+            "goal_id": session.goal_id,
+            "status": session.status.value,
+            "progress_pct": session.progress_pct,
+            "created_at": session.created_at,
+        }
+    except ValueError as e:
+        return {"error": str(e), "exit_code": 1}
+
+
+async def do_goal_status(content: str, owner: Optional[str] = None) -> Dict:
+    """Get the current status of a tracked goal.
+
+    Args:
+        content: JSON with key:
+            goal_id (str): The goal to check
+    """
+    try:
+        args = json.loads(content) if isinstance(content, str) else content
+    except (json.JSONDecodeError, TypeError):
+        return {"error": "Invalid JSON", "exit_code": 1}
+
+    goal_id = args.get("goal_id", "")
+    if not goal_id:
+        return {"error": "goal_id is required", "exit_code": 1}
+
+    tracker = _get_tracker()
+    session = tracker.get_goal(goal_id)
+    if not session:
+        return {"error": f"goal '{goal_id}' not found", "exit_code": 1}
+
+    return {
+        "goal_id": session.goal_id,
+        "goal": session.goal[:80],
+        "status": session.status.value,
+        "progress_pct": session.progress_pct,
+        "task_count": session.task_count,
+        "tasks_completed": session.tasks_completed,
+        "checkpoints": len(session.checkpoints),
+        "error": session.error,
+        "is_terminal": session.is_terminal,
+        "is_active": session.is_active,
+    }
+
+
+async def do_goal_transition(content: str, owner: Optional[str] = None) -> Dict:
+    """Transition a goal to a specific state.
+
+    Args:
+        content: JSON with keys:
+            goal_id (str): The goal to transition
+            status (str): Target state (analyzing, planning, decomposing,
+                          assigning, executing, verifying, completed, failed)
+            error (str, optional): Error message if transitioning to failed
+    """
+    try:
+        args = json.loads(content) if isinstance(content, str) else content
+    except (json.JSONDecodeError, TypeError):
+        return {"error": "Invalid JSON", "exit_code": 1}
+
+    goal_id = args.get("goal_id", "")
+    status_str = args.get("status", "")
+    if not goal_id or not status_str:
+        return {"error": "goal_id and status are required", "exit_code": 1}
+
+    from cortex.goal_state import GoalStatus
+    try:
+        to_status = GoalStatus(status_str)
+    except ValueError:
+        return {"error": f"unknown status: {status_str}", "exit_code": 1}
+
+    tracker = _get_tracker()
+    try:
+        session = tracker.transition(goal_id, to_status, error=args.get("error"))
+        return {
+            "goal_id": session.goal_id,
+            "status": session.status.value,
+            "progress_pct": session.progress_pct,
+        }
+    except ValueError as e:
+        return {"error": str(e), "exit_code": 1}
+
+
+async def do_goal_advance(content: str, owner: Optional[str] = None) -> Dict:
+    """Advance a goal to the next logical state.
+
+    Args:
+        content: JSON with key:
+            goal_id (str): The goal to advance
+    """
+    try:
+        args = json.loads(content) if isinstance(content, str) else content
+    except (json.JSONDecodeError, TypeError):
+        return {"error": "Invalid JSON", "exit_code": 1}
+
+    goal_id = args.get("goal_id", "")
+    if not goal_id:
+        return {"error": "goal_id is required", "exit_code": 1}
+
+    tracker = _get_tracker()
+    try:
+        session = tracker.advance(goal_id)
+        return {
+            "goal_id": session.goal_id,
+            "status": session.status.value,
+            "progress_pct": session.progress_pct,
+        }
+    except ValueError as e:
+        return {"error": str(e), "exit_code": 1}
+
+
+async def do_goal_checkpoint(content: str, owner: Optional[str] = None) -> Dict:
+    """Create a checkpoint for a goal to enable rollback.
+
+    Args:
+        content: JSON with keys:
+            goal_id (str): The goal to checkpoint
+            context (dict, optional): Context to save with checkpoint
+            outputs (dict, optional): Step outputs to save
+    """
+    try:
+        args = json.loads(content) if isinstance(content, str) else content
+    except (json.JSONDecodeError, TypeError):
+        return {"error": "Invalid JSON", "exit_code": 1}
+
+    goal_id = args.get("goal_id", "")
+    if not goal_id:
+        return {"error": "goal_id is required", "exit_code": 1}
+
+    tracker = _get_tracker()
+    try:
+        cp = tracker.checkpoint(
+            goal_id,
+            context=args.get("context"),
+            outputs=args.get("outputs"),
+        )
+        return {
+            "checkpoint_id": cp.id,
+            "state": cp.state.value,
+            "progress": cp.progress,
+            "timestamp": cp.timestamp,
+        }
+    except ValueError as e:
+        return {"error": str(e), "exit_code": 1}
+
+
+async def do_goal_update_progress(content: str, owner: Optional[str] = None) -> Dict:
+    """Update a goal's progress percentage and task counts.
+
+    Args:
+        content: JSON with keys:
+            goal_id (str): The goal to update
+            progress (float): Progress 0.0-1.0
+            task_count (int, optional): Total task count
+            tasks_completed (int, optional): Completed tasks
+    """
+    try:
+        args = json.loads(content) if isinstance(content, str) else content
+    except (json.JSONDecodeError, TypeError):
+        return {"error": "Invalid JSON", "exit_code": 1}
+
+    goal_id = args.get("goal_id", "")
+    if not goal_id:
+        return {"error": "goal_id is required", "exit_code": 1}
+
+    tracker = _get_tracker()
+    try:
+        session = tracker.update_progress(
+            goal_id,
+            progress=args.get("progress", 0.0),
+            task_count=args.get("task_count"),
+            tasks_completed=args.get("tasks_completed"),
+        )
+        return {
+            "goal_id": session.goal_id,
+            "progress_pct": session.progress_pct,
+            "task_count": session.task_count,
+            "tasks_completed": session.tasks_completed,
+        }
+    except ValueError as e:
+        return {"error": str(e), "exit_code": 1}
+
+
+async def do_list_goals(content: str, owner: Optional[str] = None) -> Dict:
+    """List all tracked goals, optionally filtered by status.
+
+    Args:
+        content: JSON with key:
+            status (str, optional): Filter by status
+    """
+    try:
+        args = json.loads(content) if isinstance(content, str) else content
+    except (json.JSONDecodeError, TypeError):
+        args = {}
+
+    from cortex.goal_state import GoalStatus
+    status_filter = None
+    if args.get("status"):
+        try:
+            status_filter = GoalStatus(args["status"])
+        except ValueError:
+            pass
+
+    tracker = _get_tracker()
+    sessions = tracker.list_goals(status=status_filter)
+    return {
+        "goals": [
+            {
+                "goal_id": s.goal_id,
+                "goal": s.goal[:80],
+                "status": s.status.value,
+                "progress_pct": s.progress_pct,
+                "created_at": s.created_at,
+            }
+            for s in sessions
+        ],
+        "count": len(sessions),
+    }
+

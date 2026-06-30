@@ -1,19 +1,26 @@
 """
-cortex/goals.py — Goal decomposition engine.
+cortex/goals.py — Goal decomposition engine with state machine integration.
 
 Decomposes high-level goals into structured subtasks using:
 1. Template matching (fast path for common patterns)
 2. Heuristic decomposition (fallback)
 
-Port of CORTEX goals/engine.ts to Python, adapted for Odysseus.
+Integrates with cortex/goal_state.py for full 8-state lifecycle tracking.
 """
 
 from __future__ import annotations
 
 import re
+import time
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
+from .goal_state import GoalTracker, GoalSession, GoalStatus
+
+
+# ---------------------------------------------------------------------------
+# Data types
+# ---------------------------------------------------------------------------
 
 @dataclass
 class SubTask:
@@ -91,6 +98,38 @@ _TEMPLATES: List[dict] = [
     },
 ]
 
+
+# ---------------------------------------------------------------------------
+# Presets for common goal types
+# ---------------------------------------------------------------------------
+
+_GOAL_PRESETS: Dict[str, Dict[str, Any]] = {
+    "feature": {
+        "steps": ["analyzing", "planning", "decomposing", "assigning", "executing", "verifying"],
+        "description": "New feature implementation",
+    },
+    "research": {
+        "steps": ["analyzing", "planning", "executing", "verifying"],
+        "description": "Research and investigation",
+    },
+    "bugfix": {
+        "steps": ["analyzing", "decomposing", "assigning", "executing", "verifying"],
+        "description": "Bug fix with minimal planning",
+    },
+    "maintenance": {
+        "steps": ["analyzing", "planning", "executing", "verifying"],
+        "description": "Routine maintenance",
+    },
+    "strategy": {
+        "steps": ["analyzing", "planning", "verifying"],
+        "description": "Strategic planning (no code)",
+    },
+}
+
+
+# ---------------------------------------------------------------------------
+# Decomposition functions
+# ---------------------------------------------------------------------------
 
 def _make_template_tasks(template: dict) -> List[SubTask]:
     """Build SubTask list from a template dict."""
@@ -174,3 +213,46 @@ def render_tree(decomp: GoalDecomposition) -> str:
         opt = " [optional]" if task.optional else ""
         lines.append(f"  ├─ {task.id}: {task.description} [{task.agent}] ~${task.estimated_cost_usd:.3f}{deps}{opt}")
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# High-level API: decompose + create tracked session
+# ---------------------------------------------------------------------------
+
+def decompose_and_track(
+    goal_id: str,
+    goal: str,
+    tracker: GoalTracker,
+    context: Optional[Dict[str, Any]] = None,
+) -> GoalSession:
+    """Decompose a goal AND create a tracked session in one call.
+
+    Returns the GoalSession in ANALYZING state (first step after CREATED).
+    """
+    # Analyze goal type
+    goal_lower = goal.lower()
+    if any(kw in goal_lower for kw in ["audit", "security", "vulnerabilit"]):
+        preset = "research"
+    elif any(kw in goal_lower for kw in ["refactor", "split", "modular"]):
+        preset = "feature"
+    elif any(kw in goal_lower for kw in ["fix", "bug", "error", "crash"]):
+        preset = "bugfix"
+    elif any(kw in goal_lower for kw in ["strategy", "plan", "vision"]):
+        preset = "strategy"
+    else:
+        preset = "feature"
+
+    # Create session
+    ctx = dict(context or {})
+    ctx["preset"] = preset
+    ctx["preset_description"] = _GOAL_PRESETS.get(preset, {}).get("description", "")
+    ctx["steps"] = _GOAL_PRESETS.get(preset, {}).get("steps", [])
+
+    session = tracker.create_goal(goal_id, goal, context=ctx)
+
+    # Auto-advance to ANALYZING
+    tracker.transition(goal_id, GoalStatus.ANALYZING)
+
+    result = tracker.get_goal(goal_id)
+    assert result is not None, f"Goal '{goal_id}' just created but not found"
+    return result

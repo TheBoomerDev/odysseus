@@ -121,9 +121,89 @@ class SDDGenerator:
     filled by Odysseus's LLM for best quality.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, llm_model: str = "deepseek-chat"):
+        self.llm_model = llm_model
+        self._llm_available = False
+        self._check_llm()
 
+    def _check_llm(self) -> None:
+        """Check if Odysseus LLM is available by probing the endpoint."""
+        try:
+            import httpx
+            from src.config import settings
+            host = getattr(settings, "default_host", "localhost")
+            r = httpx.get(f"http://{host}:11434/v1/models", timeout=3)
+            self._llm_available = r.status_code == 200
+        except Exception:
+            self._llm_available = False
+
+    def _llm_generate(self, system_prompt: str, user_prompt: str, max_tokens: int = 1024) -> Optional[str]:
+        """Generate content using Odysseus's LLM. Falls back to None if unavailable."""
+        if not self._llm_available:
+            return None
+        try:
+            import httpx
+            from src.config import settings
+            host = getattr(settings, "default_host", "localhost")
+            payload = {
+                "model": self.llm_model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "max_tokens": max_tokens,
+                "temperature": 0.3,
+            }
+            r = httpx.post(
+                f"http://{host}:11434/v1/chat/completions",
+                json=payload,
+                timeout=30,
+            )
+            if r.status_code == 200:
+                data = r.json()
+                return data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            return None
+        except Exception:
+            self._llm_available = False
+            return None
+
+    def generate_spec_with_llm(self, goal: str) -> str:
+        """Generate a specification using LLM. Falls back to template."""
+        system = "You are a senior software architect. Generate a detailed functional specification."
+        user = f"Write a comprehensive specification document for: {goal}\n\nInclude: goal, functional requirements, non-functional requirements, scope, technical approach, data model, API design, dependencies, risks."
+        content = self._llm_generate(system, user)
+        if content:
+            return content
+        return self.generate_spec_template(goal)
+
+    def generate_plan_with_llm(self, goal: str) -> str:
+        """Generate an implementation plan using LLM. Falls back to template."""
+        system = "You are a senior project manager. Generate a detailed implementation plan."
+        user = f"Write a comprehensive implementation plan for: {goal}\n\nInclude: phases, tasks with checkboxes, timeline, resources, milestones, dependencies."
+        content = self._llm_generate(system, user)
+        if content:
+            return content
+        return self.generate_plan_template(goal)
+
+    def generate_tasks_with_llm(self, goal: str) -> str:
+        """Generate a task breakdown using LLM. Falls back to template."""
+        system = "You are a senior tech lead. Break down work into concrete, assignable tasks."
+        user = f"Break down into specific tasks for: {goal}\n\nEach task should have: description, type, priority, estimated effort, dependencies, acceptance criteria."
+        content = self._llm_generate(system, user)
+        if content:
+            return content
+        return self.generate_tasks_template(goal)
+
+    def generate_all_with_llm(self, goal_id: str, goal: str) -> SDDDocuments:
+        """Generate all three SDD documents using LLM when available."""
+        return SDDDocuments(
+            goal_id=goal_id,
+            goal=goal,
+            spec_content=self.generate_spec_with_llm(goal),
+            plan_content=self.generate_plan_with_llm(goal),
+            tasks_content=self.generate_tasks_with_llm(goal),
+            created_at=datetime.now().isoformat(),
+        )
     def generate_spec_template(self, goal: str) -> str:
         """Generate a specification document template."""
         return f"""# Specification
@@ -171,8 +251,8 @@ class SDDGenerator:
 ## Acceptance Criteria
 1.
 2.
-3.
-"""
+3."""
+
 
     def generate_plan_template(self, goal: str) -> str:
         """Generate an implementation plan template."""

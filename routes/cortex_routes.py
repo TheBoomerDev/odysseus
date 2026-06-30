@@ -17,6 +17,7 @@ from cortex.smart_router import SmartRouter, TaskCategory, RoutingPriority
 from cortex.csuite import CSuiteOrchestrator, CSuiteRole, CompanyContext
 from cortex.sdd import SDDGenerator, PipelineOrchestrator
 from cortex.heartbeat import HeartbeatManager
+from cortex.goal_state import GoalTracker, GoalStatus
 
 logger = logging.getLogger(__name__)
 
@@ -48,14 +49,15 @@ def setup_cortex_routes(
     async def get_capabilities():
         """List all CORTEX submodule capabilities."""
         return {
-            "goals": {"decompose": True, "templates": 3},
+            "goals": {"decompose": True, "templates": 3, "state_machine": True,
+                      "tracking": True, "checkpoints": True, "presets": 5},
             "router": {"route": True, "smart_route": True, "categories": 9, "agents_supported": 5},
             "improve": {"trajectories": True, "pattern_detection": True},
             "skills_sh": {"search": True, "install": skills_manager is not None},
             "cli_invoker": {"discover": True, "invoke": True},
             "smart_router": {"models": 24, "providers": 8, "categories": 9},
             "csuite": {"roles": 6, "query": True, "context": True},
-            "sdd": {"generate": True, "pipeline_steps": 7},
+            "sdd": {"generate": True, "pipeline_steps": 7, "llm_generate": _sdd_gen._llm_available},
             "heartbeat": {"status": True, "tick": True, "interval_s": 60},
         }
 
@@ -416,4 +418,264 @@ def setup_cortex_routes(
             "errors": result.errors,
         }
 
+
+    # ==================================================================
+    # GOAL STATE MACHINE (Fase 4)
+    # ==================================================================
+
+    _tracker = GoalTracker()
+
+    # POST /api/cortex/goals/session
+    @r.post("/goals/session")
+    async def goal_create(body: dict):
+        """Create a new tracked goal session."""
+        goal_id = body.get("goal_id", "")
+        goal = body.get("goal", "")
+        if not goal_id or not goal:
+            raise HTTPException(status_code=400, detail="goal_id and goal are required")
+        try:
+            session = goals.decompose_and_track(
+                goal_id, goal, _tracker,
+                context=body.get("context"),
+            )
+            return {
+                "goal_id": session.goal_id,
+                "status": session.status.value,
+                "progress_pct": session.progress_pct,
+                "created_at": session.created_at,
+            }
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    # GET /api/cortex/goals/session/{goal_id}
+    @r.get("/goals/session/{goal_id}")
+    async def goal_get(goal_id: str):
+        """Get a goal session with full details."""
+        session = _tracker.get_goal(goal_id)
+        if not session:
+            raise HTTPException(status_code=404, detail=f"goal '{goal_id}' not found")
+        return {
+            "goal_id": session.goal_id,
+            "goal": session.goal,
+            "status": session.status.value,
+            "progress_pct": session.progress_pct,
+            "created_at": session.created_at,
+            "updated_at": session.updated_at,
+            "error": session.error,
+            "task_count": session.task_count,
+            "tasks_completed": session.tasks_completed,
+            "checkpoints": len(session.checkpoints),
+            "context": session.context,
+        }
+
+    # GET /api/cortex/goals/sessions
+    @r.get("/goals/sessions")
+    async def goal_list(status: Optional[str] = None):
+        """List all goal sessions, optionally filtered by status."""
+        status_filter = None
+        if status:
+            try:
+                status_filter = GoalStatus(status)
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"unknown status: {status}")
+        sessions = _tracker.list_goals(status=status_filter)
+        return {
+            "goals": [
+                {
+                    "goal_id": s.goal_id,
+                    "goal": s.goal[:80],
+                    "status": s.status.value,
+                    "progress_pct": s.progress_pct,
+                    "created_at": s.created_at,
+                }
+                for s in sessions
+            ],
+            "count": len(sessions),
+        }
+
+    # DELETE /api/cortex/goals/session/{goal_id}
+    @r.delete("/goals/session/{goal_id}")
+    async def goal_delete(goal_id: str):
+        """Delete a goal session."""
+        if _tracker.delete_goal(goal_id):
+            return {"ok": True}
+        raise HTTPException(status_code=404, detail=f"goal '{goal_id}' not found")
+
+    # POST /api/cortex/goals/session/{goal_id}/transition
+    @r.post("/goals/session/{goal_id}/transition")
+    async def goal_transition(goal_id: str, body: dict):
+        """Transition a goal to a specific state."""
+        to_status_str = body.get("status", "")
+        try:
+            to_status = GoalStatus(to_status_str)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"unknown status: {to_status_str}")
+        try:
+            session = _tracker.transition(goal_id, to_status, error=body.get("error"))
+            return {
+                "goal_id": session.goal_id,
+                "status": session.status.value,
+                "progress_pct": session.progress_pct,
+            }
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    # POST /api/cortex/goals/session/{goal_id}/advance
+    @r.post("/goals/session/{goal_id}/advance")
+    async def goal_advance(goal_id: str):
+        """Advance a goal to the next logical state."""
+        try:
+            session = _tracker.advance(goal_id)
+            return {
+                "goal_id": session.goal_id,
+                "status": session.status.value,
+                "progress_pct": session.progress_pct,
+            }
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    # POST /api/cortex/goals/session/{goal_id}/fail
+    @r.post("/goals/session/{goal_id}/fail")
+    async def goal_fail(goal_id: str, body: dict):
+        """Mark a goal as failed."""
+        try:
+            session = _tracker.fail(goal_id, body.get("error", "Unknown error"))
+            return {"goal_id": session.goal_id, "status": "failed"}
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    # POST /api/cortex/goals/session/{goal_id}/complete
+    @r.post("/goals/session/{goal_id}/complete")
+    async def goal_complete(goal_id: str):
+        """Mark a goal as completed."""
+        try:
+            session = _tracker.complete(goal_id)
+            return {"goal_id": session.goal_id, "status": "completed"}
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    # POST /api/cortex/goals/session/{goal_id}/retry
+    @r.post("/goals/session/{goal_id}/retry")
+    async def goal_retry(goal_id: str):
+        """Retry a failed goal from scratch."""
+        try:
+            session = _tracker.retry(goal_id)
+            return {"goal_id": session.goal_id, "status": session.status.value}
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    # PUT /api/cortex/goals/session/{goal_id}/progress
+    @r.put("/goals/session/{goal_id}/progress")
+    async def goal_update_progress(goal_id: str, body: dict):
+        """Update progress and task counts for a goal."""
+        try:
+            session = _tracker.update_progress(
+                goal_id,
+                progress=body.get("progress", 0.0),
+                task_count=body.get("task_count"),
+                tasks_completed=body.get("tasks_completed"),
+            )
+            return {
+                "goal_id": session.goal_id,
+                "progress_pct": session.progress_pct,
+                "task_count": session.task_count,
+                "tasks_completed": session.tasks_completed,
+            }
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    # PUT /api/cortex/goals/session/{goal_id}/context
+    @r.put("/goals/session/{goal_id}/context")
+    async def goal_update_context(goal_id: str, body: dict):
+        """Update context on a goal session."""
+        try:
+            session = _tracker.update_context(goal_id, **body)
+            return {"goal_id": session.goal_id, "context": session.context}
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    # ==================================================================
+    # CHECKPOINTS (Fase 4)
+    # ==================================================================
+
+    # POST /api/cortex/goals/session/{goal_id}/checkpoint
+    @r.post("/goals/session/{goal_id}/checkpoint")
+    async def goal_create_checkpoint(goal_id: str, body: dict):
+        """Create a checkpoint for a goal."""
+        try:
+            cp = _tracker.checkpoint(
+                goal_id,
+                context=body.get("context"),
+                outputs=body.get("outputs"),
+            )
+            return {
+                "checkpoint_id": cp.id,
+                "state": cp.state.value,
+                "progress": cp.progress,
+                "timestamp": cp.timestamp,
+            }
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    # GET /api/cortex/goals/session/{goal_id}/checkpoints
+    @r.get("/goals/session/{goal_id}/checkpoints")
+    async def goal_list_checkpoints(goal_id: str):
+        """List all checkpoints for a goal."""
+        try:
+            checkpoints = _tracker.get_checkpoints(goal_id)
+            return {
+                "checkpoints": [
+                    {
+                        "id": cp.id,
+                        "state": cp.state.value,
+                        "progress": cp.progress,
+                        "timestamp": cp.timestamp,
+                    }
+                    for cp in checkpoints
+                ],
+                "count": len(checkpoints),
+            }
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    # POST /api/cortex/goals/session/{goal_id}/checkpoint/{checkpoint_id}/restore
+    @r.post("/goals/session/{goal_id}/checkpoint/{checkpoint_id}/restore")
+    async def goal_restore_checkpoint(goal_id: str, checkpoint_id: str):
+        """Restore a goal to a previous checkpoint."""
+        try:
+            session = _tracker.restore_checkpoint(goal_id, checkpoint_id)
+            return {
+                "goal_id": session.goal_id,
+                "status": session.status.value,
+                "progress_pct": session.progress_pct,
+                "restored_to_checkpoint": checkpoint_id,
+            }
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    # ==================================================================
+    # SDD with LLM (Fase 4)
+    # ==================================================================
+
+    # POST /api/cortex/sdd/generate-with-llm
+    @r.post("/sdd/generate-with-llm")
+    async def sdd_generate_with_llm(body: dict):
+        """Generate SDD documents using LLM when available."""
+        goal_id = body.get("goal_id", "")
+        goal = body.get("goal", "")
+        if not goal_id or not goal:
+            raise HTTPException(status_code=400, detail="goal_id and goal are required")
+        try:
+            docs = _sdd_gen.generate_all_with_llm(goal_id, goal)
+            path = docs.save()
+            return {
+                "goal_id": goal_id,
+                "documents_path": path,
+                "llm_used": _sdd_gen._llm_available,
+                "spec_preview": docs.spec_content[:300],
+                "plan_preview": docs.plan_content[:300],
+                "tasks_preview": docs.tasks_content[:300],
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
     return r
