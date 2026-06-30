@@ -5,6 +5,7 @@ Covers:
 - think: false is injected into the payload for Ollama /v1 thinking models
 - think: false is NOT injected for non-thinking models or non-Ollama /v1 endpoints
 """
+
 import asyncio
 import json
 
@@ -15,12 +16,15 @@ from src import llm_core
 # Fake HTTP client — captures the outgoing payload without network I/O
 # ---------------------------------------------------------------------------
 
+
 class _FakeResp:
     status_code = 200
 
     async def aiter_lines(self):
         # Yield a minimal done event so stream_llm exits cleanly
-        yield json.dumps({"choices": [{"delta": {"content": "ok"}, "finish_reason": "stop"}]})
+        yield json.dumps(
+            {"choices": [{"delta": {"content": "ok"}, "finish_reason": "stop"}]}
+        )
         yield "data: [DONE]"
 
     async def aread(self):
@@ -59,9 +63,14 @@ def _capture_payload(monkeypatch, url, model):
     monkeypatch.setattr(llm_core, "get_context_length", lambda u, m: 32768)
 
     async def run():
-        return [c async for c in llm_core.stream_llm(
-            url, model, [{"role": "user", "content": "hi"}],
-        )]
+        return [
+            c
+            async for c in llm_core.stream_llm(
+                url,
+                model,
+                [{"role": "user", "content": "hi"}],
+            )
+        ]
 
     asyncio.run(run())
     return client.captured_payload
@@ -71,6 +80,7 @@ def _capture_payload(monkeypatch, url, model):
 # _is_ollama_openai_compat_url — pure function, no I/O
 # ---------------------------------------------------------------------------
 
+
 class TestIsOllamaOpenAICompatUrl:
     """Unit tests for the URL classifier that gates think-suppression."""
 
@@ -79,13 +89,17 @@ class TestIsOllamaOpenAICompatUrl:
         assert llm_core._is_ollama_openai_compat_url("http://127.0.0.1:11434/v1")
 
     def test_default_port_chat_completions(self):
-        assert llm_core._is_ollama_openai_compat_url("http://127.0.0.1:11434/v1/chat/completions")
+        assert llm_core._is_ollama_openai_compat_url(
+            "http://127.0.0.1:11434/v1/chat/completions"
+        )
 
     def test_localhost_default_port(self):
         assert llm_core._is_ollama_openai_compat_url("http://localhost:11434/v1")
 
     def test_localhost_default_port_with_path(self):
-        assert llm_core._is_ollama_openai_compat_url("http://localhost:11434/v1/chat/completions")
+        assert llm_core._is_ollama_openai_compat_url(
+            "http://localhost:11434/v1/chat/completions"
+        )
 
     def test_loopback_ipv6(self):
         # IPv6 addresses in URLs require square brackets per RFC 3986
@@ -96,7 +110,9 @@ class TestIsOllamaOpenAICompatUrl:
         assert llm_core._is_ollama_openai_compat_url("http://127.0.0.1:11435/v1")
 
     def test_localhost_non_default_port(self):
-        assert llm_core._is_ollama_openai_compat_url("http://localhost:8080/v1/chat/completions")
+        assert llm_core._is_ollama_openai_compat_url(
+            "http://localhost:8080/v1/chat/completions"
+        )
 
     def test_zero_dot_zero_host(self):
         assert llm_core._is_ollama_openai_compat_url("http://0.0.0.0:11434/v1")
@@ -107,14 +123,18 @@ class TestIsOllamaOpenAICompatUrl:
         assert not llm_core._is_ollama_openai_compat_url("https://api.openai.com/v1")
 
     def test_openai_chat_completions(self):
-        assert not llm_core._is_ollama_openai_compat_url("https://api.openai.com/v1/chat/completions")
+        assert not llm_core._is_ollama_openai_compat_url(
+            "https://api.openai.com/v1/chat/completions"
+        )
 
     def test_ollama_native_api_path(self):
         """The native /api path is a different surface and must not match /v1."""
         assert not llm_core._is_ollama_openai_compat_url("http://localhost:11434/api")
 
     def test_ollama_native_api_chat(self):
-        assert not llm_core._is_ollama_openai_compat_url("http://localhost:11434/api/chat")
+        assert not llm_core._is_ollama_openai_compat_url(
+            "http://localhost:11434/api/chat"
+        )
 
     def test_remote_openrouter(self):
         assert not llm_core._is_ollama_openai_compat_url("https://openrouter.ai/api/v1")
@@ -129,6 +149,7 @@ class TestIsOllamaOpenAICompatUrl:
 # ---------------------------------------------------------------------------
 # Payload injection — think: false only when both conditions hold
 # ---------------------------------------------------------------------------
+
 
 class TestThinkSuppression:
     """Assert think:false is present/absent in the outgoing HTTP payload."""

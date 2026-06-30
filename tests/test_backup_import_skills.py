@@ -6,8 +6,8 @@ exported backups (often ``[]``), so calling save() raised AttributeError,
 returned a 500 HTML page, and the UI reported a misleading JSON.parse error
 from res.json().
 """
+
 import asyncio
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import routes.backup_routes as br
@@ -55,7 +55,9 @@ def test_import_with_empty_skills_list_does_not_call_save(monkeypatch):
 
     assert result["ok"] is True
     skills.add_skill.assert_not_called()
-    assert not hasattr(skills, "save") or not getattr(skills, "save", MagicMock()).called
+    assert (
+        not hasattr(skills, "save") or not getattr(skills, "save", MagicMock()).called
+    )
 
 
 def test_import_adds_new_skill_via_add_skill(monkeypatch):
@@ -69,7 +71,9 @@ def test_import_adds_new_skill_via_add_skill(monkeypatch):
     endpoint = _setup(monkeypatch, skills)
 
     body = {
-        "skills": [{"name": "buy-milk", "title": "Buy milk", "description": "Buy milk"}],
+        "skills": [
+            {"name": "buy-milk", "title": "Buy milk", "description": "Buy milk"}
+        ],
         "preferences": {"theme": "dark"},
     }
     with monkeypatch.context() as m:

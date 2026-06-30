@@ -4,6 +4,7 @@
 in place, so the next `text.strip()` raised AttributeError -> HTTP 500. The
 handler now coerces with str() and degrades to a structured "no data" response.
 """
+
 import asyncio
 
 from routes.contacts_routes import setup_contacts_routes
@@ -12,7 +13,9 @@ from routes.contacts_routes import setup_contacts_routes
 def _import_handler():
     router = setup_contacts_routes()
     for route in router.routes:
-        if getattr(route, "path", "").endswith("/import") and "POST" in getattr(route, "methods", set()):
+        if getattr(route, "path", "").endswith("/import") and "POST" in getattr(
+            route, "methods", set()
+        ):
             return route.endpoint
     raise AssertionError("import route not found")
 

@@ -6,11 +6,10 @@ that user A's calendar already held, the query returned A's row and the sync
 reassigned its calendar_id to B's calendar — stealing A's event. The lookup
 must be scoped to the calendar being synced.
 """
+
 import tempfile
-import uuid
 from datetime import datetime
 
-import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
@@ -20,7 +19,11 @@ from core.database import CalendarEvent, CalendarCal
 from src.caldav_sync import _find_existing_event
 
 _TMPDB = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-_ENGINE = create_engine(f"sqlite:///{_TMPDB.name}", connect_args={"check_same_thread": False}, poolclass=NullPool)
+_ENGINE = create_engine(
+    f"sqlite:///{_TMPDB.name}",
+    connect_args={"check_same_thread": False},
+    poolclass=NullPool,
+)
 cdb.Base.metadata.create_all(_ENGINE)
 _TS = sessionmaker(bind=_ENGINE, autoflush=False, autocommit=False)
 
@@ -28,14 +31,20 @@ _TS = sessionmaker(bind=_ENGINE, autoflush=False, autocommit=False)
 def _setup():
     db = _TS()
     try:
-        db.query(CalendarEvent).delete(); db.query(CalendarCal).delete()
+        db.query(CalendarEvent).delete()
+        db.query(CalendarCal).delete()
         db.add(CalendarCal(id="calA", owner="alice", name="A"))
         db.add(CalendarCal(id="calB", owner="bob", name="B"))
         # dtstart/dtend are NOT NULL in the schema, so seed valid values.
-        db.add(CalendarEvent(
-            uid="shared@svc", calendar_id="calA", summary="Alice event",
-            dtstart=datetime(2026, 6, 4, 9, 0), dtend=datetime(2026, 6, 4, 10, 0),
-        ))
+        db.add(
+            CalendarEvent(
+                uid="shared@svc",
+                calendar_id="calA",
+                summary="Alice event",
+                dtstart=datetime(2026, 6, 4, 9, 0),
+                dtend=datetime(2026, 6, 4, 10, 0),
+            )
+        )
         db.commit()
     finally:
         db.close()
@@ -71,6 +80,9 @@ def test_pending_takes_precedence():
     db = _TS()
     try:
         sentinel = object()
-        assert _find_existing_event(db, {"shared@svc": sentinel}, "shared@svc", "calB") is sentinel
+        assert (
+            _find_existing_event(db, {"shared@svc": sentinel}, "shared@svc", "calB")
+            is sentinel
+        )
     finally:
         db.close()

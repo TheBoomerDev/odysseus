@@ -18,13 +18,16 @@ def test_server_dropdown_options_use_profile_keys_not_hosts():
     assert "s?.host || ''" in COOKBOOK
     assert "s?.port || ''" in COOKBOOK
     assert "s?.envPath || ''" in COOKBOOK
-    assert 'const value = _serverKey(s);' in COOKBOOK
+    assert "const value = _serverKey(s);" in COOKBOOK
     assert 'option value="${esc(s.host)}"' not in COOKBOOK
 
 
 def test_selected_server_helpers_prefer_profile_key_before_host_fallback():
     assert "_envState.remoteServerKey = _serverKey(s);" in COOKBOOK
-    assert "const selected = hostOrTask === _envState.remoteHost ? _selectedServer() : null;" in COOKBOOK
+    assert (
+        "const selected = hostOrTask === _envState.remoteHost ? _selectedServer() : null;"
+        in COOKBOOK
+    )
     assert "const srv = selected || _serverByVal(hostOrTask);" in COOKBOOK
     assert "const _want = _currentServerValue();" in COOKBOOK
 
@@ -47,11 +50,18 @@ def test_serve_launch_preflights_use_selected_target_and_port():
     assert launch_target in SERVE
     assert "const _hostStr = launchTarget.host || '';" in SERVE
     assert "const _probeHost = (launchTarget.host || '').trim();" in SERVE
-    assert "if (launchTarget.port) _probeParams.set('ssh_port', launchTarget.port);" in SERVE
+    assert (
+        "if (launchTarget.port) _probeParams.set('ssh_port', launchTarget.port);"
+        in SERVE
+    )
     assert "const _portHost = (launchTarget.host || '').trim();" in SERVE
-    assert "StrictHostKeyChecking=no ${_sshPrefix(launchTarget.port)}${_portHost}" in SERVE
+    assert (
+        "StrictHostKeyChecking=no ${_sshPrefix(launchTarget.port)}${_portHost}" in SERVE
+    )
     assert "const serveHost = launchTarget.host || '';" in SERVE
-    assert SERVE.index(launch_target) < SERVE.index("const _runningMod = await import('./cookbookRunning.js');")
+    assert SERVE.index(launch_target) < SERVE.index(
+        "const _runningMod = await import('./cookbookRunning.js');"
+    )
 
 
 def test_running_tab_resolves_profile_key_not_first_host():

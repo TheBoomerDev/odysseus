@@ -6,6 +6,7 @@ first Memory row; the surrounding except swallowed it, so the personal-context
 block the LLM relies on was always empty. The logic now lives in
 `_memory_context_lines`, which reads `text`.
 """
+
 from src.builtin_actions import _memory_context_lines
 
 
@@ -15,7 +16,9 @@ class _Mem:
 
 
 def test_uses_text_and_truncates_and_skips_blank():
-    lines = _memory_context_lines([_Mem("Alice is my spouse"), _Mem("   "), _Mem("y" * 250)])
+    lines = _memory_context_lines(
+        [_Mem("Alice is my spouse"), _Mem("   "), _Mem("y" * 250)]
+    )
     assert lines[0] == "- Alice is my spouse"
     assert len(lines) == 2  # the blank row is skipped
     assert lines[1] == "- " + "y" * 200  # truncated to 200 chars

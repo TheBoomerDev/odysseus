@@ -7,6 +7,7 @@ to the old (now non-existent) owner and can no longer reach their data until
 the cache happens to refresh. The route must invalidate the cache, like the
 token CRUD routes do.
 """
+
 import sys
 import types
 from types import SimpleNamespace
@@ -29,7 +30,12 @@ def rename_endpoint(monkeypatch):
 
     # Neutralize the DB owner-rename loop (no real DB needed for this test).
     monkeypatch.setattr(cdb, "SessionLocal", lambda: MagicMock())
-    monkeypatch.setattr(cdb, "Base", SimpleNamespace(registry=SimpleNamespace(mappers=[])), raising=False)
+    monkeypatch.setattr(
+        cdb,
+        "Base",
+        SimpleNamespace(registry=SimpleNamespace(mappers=[])),
+        raising=False,
+    )
     # Neutralize the JSON-prefs rename.
     pr = types.ModuleType("routes.prefs_routes")
     pr._load = lambda: {}
@@ -57,6 +63,7 @@ def _request(invalidator):
 
 def test_rename_invalidates_token_cache(rename_endpoint):
     import asyncio
+
     endpoint, _am = rename_endpoint
     called = {"n": 0}
     req = _request(lambda: called.__setitem__("n", called["n"] + 1))
@@ -67,10 +74,13 @@ def test_rename_invalidates_token_cache(rename_endpoint):
 
 def test_no_invalidator_does_not_crash(rename_endpoint):
     import asyncio
+
     endpoint, _am = rename_endpoint
     # app.state without the hook (older wiring) must not break rename.
-    req = SimpleNamespace(cookies={"odysseus_session": "t"},
-                          app=SimpleNamespace(state=SimpleNamespace()),
-                          state=SimpleNamespace(current_user="admin"))
+    req = SimpleNamespace(
+        cookies={"odysseus_session": "t"},
+        app=SimpleNamespace(state=SimpleNamespace()),
+        state=SimpleNamespace(current_user="admin"),
+    )
     res = asyncio.run(endpoint("alice", SimpleNamespace(username="alice2"), req))
     assert res["ok"] is True

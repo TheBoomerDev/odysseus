@@ -103,7 +103,9 @@ def test_hostile_tool_name_is_escaped():
     assert "&lt;img" in out["html"], "Expected < to be HTML-escaped"
     assert "&gt;" in out["html"], "Expected > to be HTML-escaped"
     assert "<img" not in out["html"], "Raw <img> must not appear"
-    assert "onerror" not in out["html"] or "&quot;" in out["html"], "onerror must not be executable"
+    assert "onerror" not in out["html"] or "&quot;" in out["html"], (
+        "onerror must not be executable"
+    )
 
 
 @pytest.mark.skipif(not _HAS_NODE, reason="node binary not on PATH")

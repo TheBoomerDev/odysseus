@@ -7,7 +7,9 @@ from pathlib import Path
 
 
 _MODULE_PATH = Path(__file__).resolve().parents[1] / "core" / "platform_compat.py"
-_SPEC = importlib.util.spec_from_file_location("platform_compat_under_test", _MODULE_PATH)
+_SPEC = importlib.util.spec_from_file_location(
+    "platform_compat_under_test", _MODULE_PATH
+)
 platform_compat = importlib.util.module_from_spec(_SPEC)
 assert _SPEC and _SPEC.loader
 _SPEC.loader.exec_module(platform_compat)
@@ -42,7 +44,9 @@ def test_find_bash_checks_local_app_data_git_install(monkeypatch):
     monkeypatch.setenv("LocalAppData", r"C:\Users\alice\AppData\Local")
 
     expected = r"C:\Users\alice\AppData\Local\Git\bin\bash.exe"
-    monkeypatch.setattr(platform_compat.os.path, "exists", lambda path: path == expected)
+    monkeypatch.setattr(
+        platform_compat.os.path, "exists", lambda path: path == expected
+    )
 
     assert platform_compat.find_bash() == expected
 
@@ -56,7 +60,9 @@ def test_find_bash_checks_local_app_data_programs_git_install(monkeypatch):
     monkeypatch.setenv("LocalAppData", r"C:\Users\alice\AppData\Local")
 
     expected = r"C:\Users\alice\AppData\Local\Programs\Git\bin\bash.exe"
-    monkeypatch.setattr(platform_compat.os.path, "exists", lambda path: path == expected)
+    monkeypatch.setattr(
+        platform_compat.os.path, "exists", lambda path: path == expected
+    )
 
     assert platform_compat.find_bash() == expected
 
@@ -72,7 +78,9 @@ def test_find_bash_skips_windows_wsl_stub(monkeypatch):
         "which",
         lambda name: stub if name == "bash" else None,
     )
-    monkeypatch.setattr(platform_compat.os.path, "exists", lambda path: path == expected)
+    monkeypatch.setattr(
+        platform_compat.os.path, "exists", lambda path: path == expected
+    )
 
     assert platform_compat.find_bash() == expected
 
@@ -93,7 +101,9 @@ def test_is_wsl_true_when_proc_version_mentions_microsoft(monkeypatch):
 
 def test_is_wsl_false_when_proc_version_is_not_microsoft(monkeypatch):
     monkeypatch.setattr(sys, "platform", "linux", raising=False)
-    monkeypatch.setattr("builtins.open", lambda *_a, **_k: io.StringIO("Linux version 6.6.0 generic"))
+    monkeypatch.setattr(
+        "builtins.open", lambda *_a, **_k: io.StringIO("Linux version 6.6.0 generic")
+    )
 
     assert platform_compat.is_wsl() is False
 
@@ -103,7 +113,9 @@ def test_is_wsl_false_on_non_posix_without_proc_probe(monkeypatch):
     monkeypatch.setattr(platform_compat.os, "name", "nt", raising=False)
 
     def fail_open(*_args, **_kwargs):
-        raise AssertionError("open should not be called when platform is not Linux/POSIX")
+        raise AssertionError(
+            "open should not be called when platform is not Linux/POSIX"
+        )
 
     monkeypatch.setattr("builtins.open", fail_open)
 
@@ -147,13 +159,16 @@ def test_get_wsl_windows_user_profile_prefers_powershell(monkeypatch):
         stdout = "C:\\Users\\alice\\n"
 
     monkeypatch.setattr(platform_compat.subprocess, "run", lambda *_a, **_k: _Result())
-    monkeypatch.setattr(platform_compat, "translate_path", lambda _v: "/mnt/c/Users/alice")
+    monkeypatch.setattr(
+        platform_compat, "translate_path", lambda _v: "/mnt/c/Users/alice"
+    )
 
     assert platform_compat.get_wsl_windows_user_profile() == "/mnt/c/Users/alice"
 
 
 def test_get_wsl_windows_user_profile_falls_back_to_users_dir(monkeypatch):
     import os
+
     monkeypatch.setattr(platform_compat, "is_wsl", lambda: True)
 
     def raise_run(*_a, **_k):
@@ -169,12 +184,14 @@ def test_get_wsl_windows_user_profile_falls_back_to_users_dir(monkeypatch):
     def fake_isdir(path):
         return os.path.normpath(path) in {
             os.path.normpath("/mnt/c/Users"),
-            os.path.normpath("/mnt/c/Users/alice")
+            os.path.normpath("/mnt/c/Users/alice"),
         }
 
     monkeypatch.setattr(platform_compat.os.path, "isdir", fake_isdir)
 
-    assert platform_compat.get_wsl_windows_user_profile() == os.path.join("/mnt/c/Users", "alice")
+    assert platform_compat.get_wsl_windows_user_profile() == os.path.join(
+        "/mnt/c/Users", "alice"
+    )
 
 
 def test_get_wsl_windows_user_profile_returns_none_when_nothing_found(monkeypatch):
@@ -191,7 +208,7 @@ def test_get_wsl_windows_user_profile_returns_none_when_nothing_found(monkeypatc
 
 def test_nvidia_path_override_is_correct_string(monkeypatch):
     monkeypatch.setattr(platform_compat, "_SSH_PATH_MEMBERS", ["path1", "path2"])
-    assert platform_compat._ssh_path_override() == "export PATH=\"$PATH:path1:path2\"; "
+    assert platform_compat._ssh_path_override() == 'export PATH="$PATH:path1:path2"; '
 
 
 def test_windows_powershell_argv_defaults_include_no_profile_and_noninteractive():

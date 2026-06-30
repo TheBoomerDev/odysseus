@@ -31,9 +31,16 @@ def test_plan_mode_blocks_mutating_tools():
     disabled = plan_mode_disabled_tools()
     # A representative spread of mutating/external tools must be blocked.
     for name in (
-        "write_file", "send_email", "reply_to_email", "manage_memory",
-        "manage_settings", "create_document", "edit_document", "download_model",
-        "generate_image", "trigger_research",
+        "write_file",
+        "send_email",
+        "reply_to_email",
+        "manage_memory",
+        "manage_settings",
+        "create_document",
+        "edit_document",
+        "download_model",
+        "generate_image",
+        "trigger_research",
     ):
         assert name in disabled, f"{name} must be blocked in plan mode"
 
@@ -42,7 +49,15 @@ def test_plan_mode_allows_readonly_tools():
     disabled = plan_mode_disabled_tools()
     # Read-only investigation tools stay enabled, including the discovery tools
     # (grep/glob/ls) that replace freestyle shell.
-    for name in ("read_file", "grep", "glob", "ls", "web_search", "web_fetch", "search_chats"):
+    for name in (
+        "read_file",
+        "grep",
+        "glob",
+        "ls",
+        "web_search",
+        "web_fetch",
+        "search_chats",
+    ):
         assert name not in disabled, f"{name} should be usable in plan mode"
 
 
@@ -60,6 +75,7 @@ def test_disabled_never_intersects_allowlist():
 
 def test_mcp_readonly_classification():
     from src.mcp_manager import mcp_tool_is_readonly as ro
+
     # Server-provided hints win over the name heuristic.
     assert ro({"name": "zap", "annotations": {"readOnlyHint": True}}) is True
     assert ro({"name": "list_things", "annotations": {"readOnlyHint": False}}) is False
@@ -80,9 +96,7 @@ def test_fail_closed_fallback_blocks_mutations(monkeypatch):
         raise ImportError("simulated circular import failure")
 
     # Force the dynamic path to fail by making the lazy import explode.
-    monkeypatch.setitem(
-        __import__("sys").modules, "src.agent_tools", None
-    )
+    monkeypatch.setitem(__import__("sys").modules, "src.agent_tools", None)
     disabled = ts.plan_mode_disabled_tools()
     assert disabled, "plan mode must never fail open (empty disabled set)"
     assert "write_file" in disabled
@@ -94,11 +108,12 @@ def test_active_plan_note_pins_checklist():
     """The approved-plan note re-grounds execution so a long plan survives
     history truncation (the agent can always re-read it)."""
     from src.agent_loop import build_active_plan_note
+
     plan = "- [ ] step one\n- [ ] step two"
     note = build_active_plan_note(plan)
     assert "ACTIVE PLAN" in note
-    assert plan in note               # the actual checklist is embedded
-    assert "IN ORDER" in note         # execution guidance present
+    assert plan in note  # the actual checklist is embedded
+    assert "IN ORDER" in note  # execution guidance present
     # Empty input → no note (so we never inject a blank pin).
     assert build_active_plan_note("") == ""
     assert build_active_plan_note("   ") == ""

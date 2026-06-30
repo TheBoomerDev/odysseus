@@ -37,7 +37,9 @@ class _FakeErrorResponse:
 
 
 @pytest.mark.parametrize("module", [service_content])
-def test_content_fetcher_extracts_og_image_and_body_fallback(module, tmp_path, monkeypatch):
+def test_content_fetcher_extracts_og_image_and_body_fallback(
+    module, tmp_path, monkeypatch
+):
     html = """
     <html>
       <head>
@@ -58,7 +60,11 @@ def test_content_fetcher_extracts_og_image_and_body_fallback(module, tmp_path, m
 
     monkeypatch.setattr(module, "CONTENT_CACHE_DIR", tmp_path)
     module.content_cache_index.clear()
-    monkeypatch.setattr(module, "_get_public_url", lambda url, headers, timeout, **kwargs: _FakeResponse(html))
+    monkeypatch.setattr(
+        module,
+        "_get_public_url",
+        lambda url, headers, timeout, **kwargs: _FakeResponse(html),
+    )
 
     result = module.fetch_webpage_content("https://example.com/parity-test")
 
@@ -69,7 +75,9 @@ def test_content_fetcher_extracts_og_image_and_body_fallback(module, tmp_path, m
 
 
 @pytest.mark.parametrize("status_code", [403, 404])
-def test_fetch_webpage_content_returns_empty_result_on_http_status_error(status_code, tmp_path, monkeypatch):
+def test_fetch_webpage_content_returns_empty_result_on_http_status_error(
+    status_code, tmp_path, monkeypatch
+):
     """A 403/404 response should degrade to an empty result instead of raising.
 
     This exercises the real fetch_webpage_content() path: _get_public_url returns
@@ -85,14 +93,18 @@ def test_fetch_webpage_content_returns_empty_result_on_http_status_error(status_
         lambda url, headers, timeout, **kwargs: _FakeErrorResponse(status_code),
     )
 
-    result = service_content.fetch_webpage_content(f"https://example.com/status-{status_code}")
+    result = service_content.fetch_webpage_content(
+        f"https://example.com/status-{status_code}"
+    )
 
     assert result["success"] is False
     assert result["content"] == ""
     assert str(status_code) in result["error"]
 
 
-def test_fetch_webpage_content_429_takes_distinct_rate_limit_path(tmp_path, monkeypatch):
+def test_fetch_webpage_content_429_takes_distinct_rate_limit_path(
+    tmp_path, monkeypatch
+):
     """A 429 response must be handled by the dedicated rate-limit branch.
 
     The status_code == 429 check runs before raise_for_status() is ever called,

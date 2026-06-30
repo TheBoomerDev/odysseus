@@ -54,7 +54,9 @@ async def test_batch_events_with_datetime_objects():
 
     # Verify events exist in DB
     db = _TS()
-    events = db.query(CalendarEvent).filter(CalendarEvent.summary == "Morning Gym").all()
+    events = (
+        db.query(CalendarEvent).filter(CalendarEvent.summary == "Morning Gym").all()
+    )
     assert len(events) == 2
     db.close()
 
@@ -109,8 +111,12 @@ async def test_batch_events_partial_failure():
     # Response should mention both created and failed counts
     response = res.get("response", "")
     assert "Created 2 event(s)" in response, f"Should report 2 created: {response}"
-    assert "Failed to create 1 event(s)" in response, f"Should report 1 failed: {response}"
-    assert "error" in response.lower() or "required" in response.lower(), "Should include error details"
+    assert "Failed to create 1 event(s)" in response, (
+        f"Should report 1 failed: {response}"
+    )
+    assert "error" in response.lower() or "required" in response.lower(), (
+        "Should include error details"
+    )
 
     # Metadata fields
     assert res.get("created_count") == 2
@@ -118,8 +124,10 @@ async def test_batch_events_partial_failure():
 
     # Verify only valid events were created
     db = _TS()
-    events = db.query(CalendarEvent).filter(
-        CalendarEvent.summary.in_(["Valid Event 1", "Valid Event 2"])
-    ).all()
+    events = (
+        db.query(CalendarEvent)
+        .filter(CalendarEvent.summary.in_(["Valid Event 1", "Valid Event 2"]))
+        .all()
+    )
     assert len(events) == 2
     db.close()

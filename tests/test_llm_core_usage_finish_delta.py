@@ -6,6 +6,7 @@ streamed chunk, whose delta also carries role / finish_reason (e.g.
 stream_llm only captured usage when the delta was exactly None / {} /
 {"content": None}, so those providers\' token accounting read zero.
 """
+
 import asyncio
 import json
 
@@ -49,13 +50,16 @@ def _drive(monkeypatch, lines, model="gpt-4o-test"):
     monkeypatch.setattr(llm_core, "_is_host_dead", lambda u: False)
     monkeypatch.setattr(llm_core, "note_model_activity", lambda *a, **k: None)
     monkeypatch.setattr(llm_core, "_clear_host_dead", lambda *a, **k: None)
-    monkeypatch.setattr(llm_core, "_mark_host_dead", lambda *a, **k: False, raising=False)
+    monkeypatch.setattr(
+        llm_core, "_mark_host_dead", lambda *a, **k: False, raising=False
+    )
 
     async def run():
         out = []
         async for chunk in llm_core.stream_llm(
             "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-            model, [{"role": "user", "content": "hi"}],
+            model,
+            [{"role": "user", "content": "hi"}],
             headers={"Authorization": "Bearer k"},
         ):
             out.append(chunk)
@@ -80,12 +84,20 @@ def _usage_events(blob):
 
 def test_usage_on_finish_delta_with_role_is_captured(monkeypatch):
     lines = [
-        'data: ' + json.dumps({"choices": [{"delta": {"content": "Hello"}}]}),
-        'data: ' + json.dumps({
-            "choices": [{"delta": {"role": "assistant", "content": None}, "finish_reason": "stop"}],
-            "usage": {"prompt_tokens": 9, "completion_tokens": 1},
-        }),
-        'data: [DONE]',
+        "data: " + json.dumps({"choices": [{"delta": {"content": "Hello"}}]}),
+        "data: "
+        + json.dumps(
+            {
+                "choices": [
+                    {
+                        "delta": {"role": "assistant", "content": None},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {"prompt_tokens": 9, "completion_tokens": 1},
+            }
+        ),
+        "data: [DONE]",
     ]
     usage = _usage_events(_drive(monkeypatch, lines))
     assert usage, "usage on a non-empty finish delta was dropped"
@@ -95,9 +107,12 @@ def test_usage_on_finish_delta_with_role_is_captured(monkeypatch):
 def test_usage_on_empty_choices_chunk_still_captured(monkeypatch):
     # canonical OpenAI include_usage: final chunk has empty choices + usage
     lines = [
-        'data: ' + json.dumps({"choices": [{"delta": {"content": "Hi"}}]}),
-        'data: ' + json.dumps({"choices": [], "usage": {"prompt_tokens": 4, "completion_tokens": 2}}),
-        'data: [DONE]',
+        "data: " + json.dumps({"choices": [{"delta": {"content": "Hi"}}]}),
+        "data: "
+        + json.dumps(
+            {"choices": [], "usage": {"prompt_tokens": 4, "completion_tokens": 2}}
+        ),
+        "data: [DONE]",
     ]
     usage = _usage_events(_drive(monkeypatch, lines))
     assert usage and usage[-1] == {"input_tokens": 4, "output_tokens": 2}
@@ -107,9 +122,9 @@ def test_null_choice_chunk_does_not_crash(monkeypatch):
     # Some providers emit {"choices": [null]} as a heartbeat/keepalive chunk.
     # The parser must silently skip it rather than crashing on None.get("delta").
     lines = [
-        'data: ' + json.dumps({"choices": [{"delta": {"content": "Hello"}}]}),
-        'data: ' + json.dumps({"choices": [None]}),
-        'data: [DONE]',
+        "data: " + json.dumps({"choices": [{"delta": {"content": "Hello"}}]}),
+        "data: " + json.dumps({"choices": [None]}),
+        "data: [DONE]",
     ]
     result = _drive(monkeypatch, lines)
     assert "Hello" in result
@@ -118,9 +133,9 @@ def test_null_choice_chunk_does_not_crash(monkeypatch):
 def test_null_choice_with_null_usage_does_not_crash(monkeypatch):
     # Chunk with both choices:[null] and usage:null — neither field should panic.
     lines = [
-        'data: ' + json.dumps({"choices": [{"delta": {"content": "Hi"}}]}),
-        'data: ' + json.dumps({"choices": [None], "usage": None}),
-        'data: [DONE]',
+        "data: " + json.dumps({"choices": [{"delta": {"content": "Hi"}}]}),
+        "data: " + json.dumps({"choices": [None], "usage": None}),
+        "data: [DONE]",
     ]
     result = _drive(monkeypatch, lines)
     assert "Hi" in result
@@ -130,26 +145,45 @@ def test_null_tool_call_in_delta_is_skipped(monkeypatch):
     # Some providers include null entries in the tool_calls array alongside
     # valid calls. The null entry must be skipped; the valid call must survive.
     lines = [
-        'data: ' + json.dumps({
-            "choices": [{
-                "delta": {
-                    "tool_calls": [
-                        None,
-                        {"index": 0, "function": {"name": "get_weather", "arguments": '{"city":'}},
-                    ]
-                }
-            }]
-        }),
-        'data: ' + json.dumps({
-            "choices": [{
-                "delta": {
-                    "tool_calls": [
-                        {"index": 0, "function": {"name": "", "arguments": '"London"}'}},
-                    ]
-                }
-            }]
-        }),
-        'data: [DONE]',
+        "data: "
+        + json.dumps(
+            {
+                "choices": [
+                    {
+                        "delta": {
+                            "tool_calls": [
+                                None,
+                                {
+                                    "index": 0,
+                                    "function": {
+                                        "name": "get_weather",
+                                        "arguments": '{"city":',
+                                    },
+                                },
+                            ]
+                        }
+                    }
+                ]
+            }
+        ),
+        "data: "
+        + json.dumps(
+            {
+                "choices": [
+                    {
+                        "delta": {
+                            "tool_calls": [
+                                {
+                                    "index": 0,
+                                    "function": {"name": "", "arguments": '"London"}'},
+                                },
+                            ]
+                        }
+                    }
+                ]
+            }
+        ),
+        "data: [DONE]",
     ]
     result = _drive(monkeypatch, lines)
     # The stream completes without error; the valid tool call was accumulated.

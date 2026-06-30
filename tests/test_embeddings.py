@@ -1,4 +1,5 @@
 """Tests for embeddings.py"""
+
 from unittest.mock import MagicMock, patch
 from src.embeddings import EmbeddingClient
 

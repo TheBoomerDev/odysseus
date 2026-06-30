@@ -8,10 +8,7 @@ Tests:
   - Edge cases: empty prompt, empty agents
 """
 
-import pytest
-
 from cortex.router import (
-    AgentScore,
     RoutingDecision,
     score_agent,
     route,
@@ -64,6 +61,7 @@ ARCHITECT_AGENT = {
 # ---------------------------------------------------------------------------
 # detect_capabilities
 # ---------------------------------------------------------------------------
+
 
 class TestDetectCapabilities:
     def test_code_keyword(self):
@@ -130,6 +128,7 @@ class TestDetectCapabilities:
 # score_agent
 # ---------------------------------------------------------------------------
 
+
 class TestScoreAgent:
     def test_score_agent_perfect_match(self):
         """Perfect capability match yields quality=1.0."""
@@ -154,13 +153,17 @@ class TestScoreAgent:
     def test_score_agent_cost_inverted(self):
         """Higher cost_tier results in lower cost score."""
         expensive = score_agent(
-            agent_id="a", agent_name="A",
-            capabilities=[], required_caps=[],
+            agent_id="a",
+            agent_name="A",
+            capabilities=[],
+            required_caps=[],
             cost_tier=0.9,
         )
         cheap = score_agent(
-            agent_id="b", agent_name="B",
-            capabilities=[], required_caps=[],
+            agent_id="b",
+            agent_name="B",
+            capabilities=[],
+            required_caps=[],
             cost_tier=0.1,
         )
         assert cheap.cost > expensive.cost
@@ -168,13 +171,17 @@ class TestScoreAgent:
     def test_score_agent_recency(self):
         """Recently used agents get higher recency."""
         recent = score_agent(
-            agent_id="a", agent_name="A",
-            capabilities=[], required_caps=[],
+            agent_id="a",
+            agent_name="A",
+            capabilities=[],
+            required_caps=[],
             last_used_hours=1.0,
         )
         old = score_agent(
-            agent_id="b", agent_name="B",
-            capabilities=[], required_caps=[],
+            agent_id="b",
+            agent_name="B",
+            capabilities=[],
+            required_caps=[],
             last_used_hours=200.0,
         )
         assert recent.recency > old.recency
@@ -182,8 +189,10 @@ class TestScoreAgent:
     def test_score_agent_no_recency(self):
         """Agents never used get a default recency of 0.3."""
         score = score_agent(
-            agent_id="new", agent_name="New",
-            capabilities=[], required_caps=[],
+            agent_id="new",
+            agent_name="New",
+            capabilities=[],
+            required_caps=[],
             last_used_hours=None,
         )
         assert score.recency == 0.3
@@ -191,7 +200,8 @@ class TestScoreAgent:
     def test_score_range(self):
         """Composite score is between 0 and 1 (approximately)."""
         score = score_agent(
-            agent_id="test", agent_name="Test",
+            agent_id="test",
+            agent_name="Test",
             capabilities=["code_edit"],
             required_caps=["code_edit"],
             cost_tier=0.5,
@@ -209,8 +219,10 @@ class TestScoreAgent:
         w["affinity"] = 0.0
         w["diversity"] = 0.0
         score = score_agent(
-            agent_id="codex", agent_name="Codex",
-            capabilities=["code_edit"], required_caps=["code_edit"],
+            agent_id="codex",
+            agent_name="Codex",
+            capabilities=["code_edit"],
+            required_caps=["code_edit"],
             weights=w,
         )
         assert score.score == 1.0  # quality=1.0 with all weight on quality
@@ -219,6 +231,7 @@ class TestScoreAgent:
 # ---------------------------------------------------------------------------
 # route()
 # ---------------------------------------------------------------------------
+
 
 class TestRoute:
     def test_route_selects_best_agent(self):
@@ -312,6 +325,7 @@ class TestRoute:
 # ---------------------------------------------------------------------------
 # RoutingDecision
 # ---------------------------------------------------------------------------
+
 
 class TestRoutingDecision:
     def test_decision_attributes(self):

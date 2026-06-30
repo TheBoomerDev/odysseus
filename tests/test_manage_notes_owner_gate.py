@@ -55,7 +55,9 @@ def _install_fakes(monkeypatch, note):
 
 
 def _run(args, owner="alice"):
-    return asyncio.run(tool_implementations.do_manage_notes(json.dumps(args), owner=owner))
+    return asyncio.run(
+        tool_implementations.do_manage_notes(json.dumps(args), owner=owner)
+    )
 
 
 def _note(owner=None, **overrides):

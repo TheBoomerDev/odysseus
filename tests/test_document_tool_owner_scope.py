@@ -159,7 +159,12 @@ def test_document_tool_dispatch_forwards_owner():
     assert "_document_tool_dispatch(tool, content, session_id, owner)" in source
 
     # Also verify TOOL_HANDLERS has the expected entries
-    for key in ("create_document", "update_document", "edit_document",
-                "suggest_document", "manage_documents"):
+    for key in (
+        "create_document",
+        "update_document",
+        "edit_document",
+        "suggest_document",
+        "manage_documents",
+    ):
         assert key in TOOL_HANDLERS, f"TOOL_HANDLERS missing key: {key}"
         assert callable(TOOL_HANDLERS[key]), f"TOOL_HANDLERS[{key!r}] is not callable"

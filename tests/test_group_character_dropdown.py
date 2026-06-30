@@ -9,6 +9,7 @@ The fix has two parts:
 
 These tests assert the source patterns exist so they can't be silently removed.
 """
+
 from pathlib import Path
 
 GROUP_JS = Path("static/js/group.js").read_text(encoding="utf-8")
@@ -16,6 +17,7 @@ PRESETS_JS = Path("static/js/presets.js").read_text(encoding="utf-8")
 
 
 # --- group.js: in-memory template merge in _getCharacterList ---
+
 
 def test_group_imports_getUserTemplates():
     """group.js must import getUserTemplates from presets.js."""
@@ -31,6 +33,7 @@ def test_group_merges_in_memory_templates():
 
 
 # --- presets.js: optimistic in-memory update on save ---
+
 
 def test_presets_exports_getUserTemplates():
     """getUserTemplates must be exported from presets.js."""
@@ -59,6 +62,7 @@ def test_presets_optimistic_id_not_empty():
     # Must NOT use empty string as fallback (that was the bug)
     assert "(_existing && _existing.id) || ''" not in PRESETS_JS
 
+
 def test_presets_clone_happens_before_mutation():
     """Rollback snapshot must be taken before Object.assign mutates _existing."""
     clone_idx = PRESETS_JS.find("clone = JSON.parse(JSON.stringify(_existing))")
@@ -68,14 +72,17 @@ def test_presets_clone_happens_before_mutation():
     assert assign_idx != -1
     assert clone_idx < assign_idx
 
+
 def test_presets_rollbak_restores_from_clone():
     """Failed save must restore the original object from the pre-mutation clone."""
     assert "if (clone)" in PRESETS_JS
     assert "Object.assign(_existing, clone)" in PRESETS_JS
 
+
 def test_presets_clone_is_deep_copy():
     """Rollback snapshot must be a deep clone, not an alias."""
     assert "clone = JSON.parse(JSON.stringify(_existing))" in PRESETS_JS
+
 
 def test_presets_no_alias_clone():
     """Prevent accidental rollback breakage via reference assignment."""

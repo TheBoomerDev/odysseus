@@ -66,9 +66,11 @@ def _spawn_bg(coro) -> asyncio.Task:
 
 # ── Data containers ────────────────────────────────────────────────────── #
 
+
 @dataclass
 class PresetInfo:
     """Extracted preset parameters."""
+
     temperature: Optional[float]
     max_tokens: Optional[int]
     system_prompt: Optional[str]
@@ -78,6 +80,7 @@ class PresetInfo:
 @dataclass
 class PreprocessedMessage:
     """Result of chat_handler.preprocess_message."""
+
     enhanced_message: str
     user_content: Any  # str or list (multimodal)
     text_for_context: str
@@ -88,6 +91,7 @@ class PreprocessedMessage:
 @dataclass
 class ChatContext:
     """Everything needed to call the LLM after context-building."""
+
     preface: list
     rag_sources: list
     web_sources: list
@@ -110,6 +114,7 @@ class ChatContext:
 
 
 # ── Helpers ────────────────────────────────────────────────────────────── #
+
 
 def _enforce_chat_privileges(request, sess) -> None:
     """Apply the per-user privilege gates (allowed_models + max_messages_per_day)
@@ -138,13 +143,17 @@ def _enforce_chat_privileges(request, sess) -> None:
     # (block all) from "user clicked [All]" (no restriction), since both
     # otherwise produce an empty `allowed_models` list.
     if privs.get("block_all_models"):
-        raise HTTPException(403, f"Your account is not allowed to use model '{sess.model}'.")
+        raise HTTPException(
+            403, f"Your account is not allowed to use model '{sess.model}'."
+        )
 
     allowed_raw = privs.get("allowed_models")
     allowed = allowed_raw if isinstance(allowed_raw, list) else []
     restricted = bool(privs.get("allowed_models_restricted")) or bool(allowed)
     if restricted and sess.model and sess.model not in allowed:
-        raise HTTPException(403, f"Your account is not allowed to use model '{sess.model}'.")
+        raise HTTPException(
+            403, f"Your account is not allowed to use model '{sess.model}'."
+        )
 
     cap = int(privs.get("max_messages_per_day") or 0)
     if cap <= 0:
@@ -152,20 +161,25 @@ def _enforce_chat_privileges(request, sess) -> None:
 
     from datetime import datetime as _dt, timedelta as _td
     from core.database import Session as _DbSess, ChatMessage as _Cm
+
     db = SessionLocal()
     try:
         count = (
             db.query(_Cm)
             .join(_DbSess, _Cm.session_id == _DbSess.id)
-            .filter(_DbSess.owner == user,
-                    _Cm.role == "user",
-                    _Cm.timestamp >= _dt.utcnow() - _td(days=1))
+            .filter(
+                _DbSess.owner == user,
+                _Cm.role == "user",
+                _Cm.timestamp >= _dt.utcnow() - _td(days=1),
+            )
             .count()
         )
     finally:
         db.close()
     if count >= cap:
-        raise HTTPException(429, f"Daily message limit reached ({cap}). Try again in 24 hours.")
+        raise HTTPException(
+            429, f"Daily message limit reached ({cap}). Try again in 24 hours."
+        )
 
 
 def needs_auto_name(name: str) -> bool:
@@ -193,7 +207,11 @@ async def auto_name_session(session_manager, sess):
                 content = msg.content
                 if isinstance(content, list):
                     content = next(
-                        (i.get("text", "") for i in content if isinstance(i, dict) and i.get("type") == "text"),
+                        (
+                            i.get("text", "")
+                            for i in content
+                            if isinstance(i, dict) and i.get("type") == "text"
+                        ),
                         "",
                     )
                 first_msg = str(content)[:500]
@@ -219,7 +237,10 @@ async def auto_name_session(session_manager, sess):
             t_url,
             t_model,
             [
-                {"role": "system", "content": "Generate a short title (3-6 words, no quotes) for a conversation that starts with this message. Reply with ONLY the title, nothing else. Do NOT include any thinking, reasoning, or explanation — just the title."},
+                {
+                    "role": "system",
+                    "content": "Generate a short title (3-6 words, no quotes) for a conversation that starts with this message. Reply with ONLY the title, nothing else. Do NOT include any thinking, reasoning, or explanation — just the title.",
+                },
                 {"role": "user", "content": first_msg},
             ],
             temperature=0.3,
@@ -228,10 +249,11 @@ async def auto_name_session(session_manager, sess):
             timeout=60,
         )
 
-        title = title.strip().strip('"\'').strip()
+        title = title.strip().strip("\"'").strip()
         # Strip <think>/<thinking> blocks (closed, dangling, or stray tags)
         # via the central helper.
         from src.text_helpers import strip_think
+
         title = strip_think(title, prose=False, prompt_echo=False)
         if title and len(title) < 80:
             session_manager.update_session_name(sess.id, title)
@@ -239,6 +261,7 @@ async def auto_name_session(session_manager, sess):
 
     except Exception as e:
         import traceback
+
         logger.error(f"Auto-name failed for {sess.id}: {e}\n{traceback.format_exc()}")
 
 
@@ -261,11 +284,10 @@ def try_fallback_endpoint(sess, session_id: str) -> dict | None:
     owner = getattr(sess, "owner", None)
     db = SessionLocal()
     try:
-        q = db.query(ModelEndpoint).filter(
-            ModelEndpoint.is_enabled == True
-        )
+        q = db.query(ModelEndpoint).filter(ModelEndpoint.is_enabled == True)
         if owner:
             from src.auth_helpers import owner_filter
+
             q = owner_filter(q, ModelEndpoint, owner)
         endpoints = q.all()
     finally:
@@ -302,7 +324,9 @@ def try_fallback_endpoint(sess, session_id: str) -> dict | None:
             new_model = models[0]
             chat_url = build_chat_url(base)
             new_headers = build_headers(api_key, base)
-            persisted_headers = {} if is_chatgpt_subscription_base(base) else new_headers
+            persisted_headers = (
+                {} if is_chatgpt_subscription_base(base) else new_headers
+            )
 
             sess.model = new_model
             sess.endpoint_url = chat_url
@@ -311,16 +335,20 @@ def try_fallback_endpoint(sess, session_id: str) -> dict | None:
             # Persist
             _db = SessionLocal()
             try:
-                _db.query(DBSession).filter(DBSession.id == session_id).update({
-                    "model": new_model,
-                    "endpoint_url": chat_url,
-                    "headers": persisted_headers,
-                })
+                _db.query(DBSession).filter(DBSession.id == session_id).update(
+                    {
+                        "model": new_model,
+                        "endpoint_url": chat_url,
+                        "headers": persisted_headers,
+                    }
+                )
                 _db.commit()
             finally:
                 _db.close()
 
-            logger.info(f"Fallback: switched session {session_id} from {current_url} to {ep.name} ({new_model})")
+            logger.info(
+                f"Fallback: switched session {session_id} from {current_url} to {ep.name} ({new_model})"
+            )
             return {
                 "model": new_model,
                 "endpoint_url": chat_url,
@@ -346,19 +374,26 @@ def extract_preset(chat_handler, preset_id) -> PresetInfo:
 
 
 async def preprocess(
-    chat_handler, message, att_ids, sess,
+    chat_handler,
+    message,
+    att_ids,
+    sess,
     auto_opened_docs: Optional[list] = None,
     allow_tool_preprocessing: bool = True,
 ) -> PreprocessedMessage:
     """Run chat_handler.preprocess_message and wrap the result."""
-    enhanced, user_content, text_ctx, yt_transcripts, att_meta = (
-        await chat_handler.preprocess_message(
-            message,
-            att_ids,
-            sess,
-            auto_opened_docs=auto_opened_docs,
-            allow_tool_preprocessing=allow_tool_preprocessing,
-        )
+    (
+        enhanced,
+        user_content,
+        text_ctx,
+        yt_transcripts,
+        att_meta,
+    ) = await chat_handler.preprocess_message(
+        message,
+        att_ids,
+        sess,
+        auto_opened_docs=auto_opened_docs,
+        allow_tool_preprocessing=allow_tool_preprocessing,
     )
     return PreprocessedMessage(
         enhanced_message=enhanced,
@@ -369,7 +404,9 @@ async def preprocess(
     )
 
 
-def build_uploaded_file_manifest(att_ids: list, upload_handler, owner: Optional[str]) -> list[dict]:
+def build_uploaded_file_manifest(
+    att_ids: list, upload_handler, owner: Optional[str]
+) -> list[dict]:
     """Resolve current-turn upload IDs into a small tool-facing manifest.
 
     The chat UI already sends attachment ids, and preprocessing inlines as much
@@ -378,7 +415,11 @@ def build_uploaded_file_manifest(att_ids: list, upload_handler, owner: Optional[
     owner-authorized uploads are included, and paths must remain inside the
     configured upload directory.
     """
-    if not att_ids or not upload_handler or not hasattr(upload_handler, "resolve_upload"):
+    if (
+        not att_ids
+        or not upload_handler
+        or not hasattr(upload_handler, "resolve_upload")
+    ):
         return []
 
     def _read_file_can_open(path: str) -> bool:
@@ -394,7 +435,9 @@ def build_uploaded_file_manifest(att_ids: list, upload_handler, owner: Optional[
         try:
             info = upload_handler.resolve_upload(str(att_id), owner=owner)
         except Exception:
-            logger.debug("Failed to resolve upload %r for agent manifest", att_id, exc_info=True)
+            logger.debug(
+                "Failed to resolve upload %r for agent manifest", att_id, exc_info=True
+            )
             continue
         if not isinstance(info, dict):
             continue
@@ -407,38 +450,63 @@ def build_uploaded_file_manifest(att_ids: list, upload_handler, owner: Optional[
                     inside = bool(upload_handler._inside_upload_dir(path))
                 elif hasattr(upload_handler, "inside_base_dir"):
                     inside = bool(upload_handler.inside_base_dir(path))
-                if not inside or not os.path.exists(path) or not _read_file_can_open(path):
+                if (
+                    not inside
+                    or not os.path.exists(path)
+                    or not _read_file_can_open(path)
+                ):
                     path = None
             except Exception:
                 path = None
 
-        manifest.append({
-            "id": info.get("id") or str(att_id),
-            "name": info.get("name") or info.get("original_name") or str(att_id),
-            "mime": info.get("mime", ""),
-            "size": info.get("size", 0),
-            "path": path,
-        })
+        manifest.append(
+            {
+                "id": info.get("id") or str(att_id),
+                "name": info.get("name") or info.get("original_name") or str(att_id),
+                "mime": info.get("mime", ""),
+                "size": info.get("size", 0),
+                "path": path,
+            }
+        )
     return manifest
 
 
-def add_user_message(sess, chat_handler, preprocessed: PreprocessedMessage, incognito: bool = False):
+def add_user_message(
+    sess, chat_handler, preprocessed: PreprocessedMessage, incognito: bool = False
+):
     """Add user message to session history and update session name.
     In incognito mode, still add to in-memory history (for conversation context)
     but skip session name update (which would persist)."""
-    user_meta = {"attachments": preprocessed.attachment_meta} if preprocessed.attachment_meta else None
+    user_meta = (
+        {"attachments": preprocessed.attachment_meta}
+        if preprocessed.attachment_meta
+        else None
+    )
     sess.add_message(ChatMessage("user", preprocessed.user_content, metadata=user_meta))
     if not incognito:
         chat_handler.update_session_name_if_needed(sess, preprocessed.text_for_context)
 
 
-def fire_message_event(request, webhook_manager, session_id: str, sess, message: str, compare_mode: bool = False):
+def fire_message_event(
+    request,
+    webhook_manager,
+    session_id: str,
+    sess,
+    message: str,
+    compare_mode: bool = False,
+):
     """Fire webhook and event_bus events for a new user message."""
     if webhook_manager and not compare_mode:
-        webhook_manager.fire_and_forget("chat.message", {
-            "session_id": session_id, "model": sess.model, "message": message[:2000],
-        })
+        webhook_manager.fire_and_forget(
+            "chat.message",
+            {
+                "session_id": session_id,
+                "model": sess.model,
+                "message": message[:2000],
+            },
+        )
     from src.event_bus import fire_event
+
     user = effective_user(request)
     fire_event("message_sent", user)
 
@@ -463,7 +531,7 @@ def _session_url_matches_endpoint(session_url: str, endpoint_base: str) -> bool:
 def _has_auth_keys(headers) -> bool:
     """True if a headers dict carries an Authorization/x-api-key entry."""
     return isinstance(headers, dict) and any(
-        k.lower() in ('authorization', 'x-api-key') for k in headers
+        k.lower() in ("authorization", "x-api-key") for k in headers
     )
 
 
@@ -471,7 +539,10 @@ def resolve_session_auth(sess, session_id: str, owner: Optional[str] = None):
     """Ensure session has auth headers — resolve from endpoint DB if missing."""
     try:
         from src.chatgpt_subscription import is_chatgpt_subscription_base
-        is_chatgpt_subscription = is_chatgpt_subscription_base(getattr(sess, "endpoint_url", "") or "")
+
+        is_chatgpt_subscription = is_chatgpt_subscription_base(
+            getattr(sess, "endpoint_url", "") or ""
+        )
     except Exception:
         is_chatgpt_subscription = False
     has_auth = _has_auth_keys(sess.headers)
@@ -480,6 +551,7 @@ def resolve_session_auth(sess, session_id: str, owner: Optional[str] = None):
 
     try:
         from src.endpoint_resolver import build_headers, resolve_endpoint_runtime
+
         db = SessionLocal()
         try:
             target_url = getattr(sess, "endpoint_url", "") or ""
@@ -491,6 +563,7 @@ def resolve_session_auth(sess, session_id: str, owner: Optional[str] = None):
                 # Scope that lookup to the session owner, otherwise two users
                 # with similar endpoint URLs can borrow each other's API key.
                 from src.auth_helpers import owner_filter
+
                 q = owner_filter(q, ModelEndpoint, owner)
             for ep in q.all():
                 if not _session_url_matches_endpoint(target_url, ep.base_url or ""):
@@ -498,7 +571,11 @@ def resolve_session_auth(sess, session_id: str, owner: Optional[str] = None):
                 try:
                     base, api_key = resolve_endpoint_runtime(ep, owner=owner)
                 except Exception as e:
-                    logger.warning("Failed to resolve provider auth for session %s: %s", session_id, e)
+                    logger.warning(
+                        "Failed to resolve provider auth for session %s: %s",
+                        session_id,
+                        e,
+                    )
                     return
                 if not api_key:
                     # No usable key (e.g. ChatGPT Subscription needs re-auth).
@@ -516,15 +593,21 @@ def resolve_session_auth(sess, session_id: str, owner: Optional[str] = None):
                     if stored is not None and _has_auth_keys(stored.headers):
                         stale_q.update({"headers": {}})
                         db.commit()
-                        logger.info(f"Cleared persisted ChatGPT Subscription bearer from session {session_id}")
-                    logger.debug(f"Resolved request-local ChatGPT Subscription auth for session {session_id}")
+                        logger.info(
+                            f"Cleared persisted ChatGPT Subscription bearer from session {session_id}"
+                        )
+                    logger.debug(
+                        f"Resolved request-local ChatGPT Subscription auth for session {session_id}"
+                    )
                     return
                 update_q = db.query(DBSession).filter(DBSession.id == session_id)
                 if owner:
                     update_q = update_q.filter(DBSession.owner == owner)
                 update_q.update({"headers": sess.headers})
                 db.commit()
-                logger.info(f"Resolved and persisted auth headers for session {session_id} from endpoint {ep.name}")
+                logger.info(
+                    f"Resolved and persisted auth headers for session {session_id} from endpoint {ep.name}"
+                )
                 return
         finally:
             db.close()
@@ -566,6 +649,7 @@ def _normalize_model_id_from_cache(sess) -> Optional[str]:
         owner = getattr(sess, "owner", None)
         if owner:
             from src.auth_helpers import owner_filter
+
             q = owner_filter(q, ModelEndpoint, owner)
         endpoints = q.all()
         for ep in endpoints:
@@ -579,7 +663,11 @@ def _normalize_model_id_from_cache(sess) -> Optional[str]:
             if not raw_models:
                 continue
             try:
-                models = json.loads(raw_models) if isinstance(raw_models, str) else raw_models
+                models = (
+                    json.loads(raw_models)
+                    if isinstance(raw_models, str)
+                    else raw_models
+                )
             except Exception:
                 continue
 
@@ -653,7 +741,10 @@ async def build_chat_context(
     # announce them to the frontend before streaming.
     auto_opened_docs: list = []
     preprocessed = await preprocess(
-        chat_handler, message, att_ids or [], sess,
+        chat_handler,
+        message,
+        att_ids or [],
+        sess,
         auto_opened_docs=auto_opened_docs,
         allow_tool_preprocessing=allow_tool_preprocessing,
     )
@@ -663,7 +754,9 @@ async def build_chat_context(
 
     # Fire events
     if not incognito:
-        fire_message_event(request, webhook_manager, session_id, sess, message, compare_mode)
+        fire_message_event(
+            request, webhook_manager, session_id, sess, message, compare_mode
+        )
 
     # Resolve owner-scoped prefs/context. Browser requests keep the cookie user;
     # bearer-token chat requests use the token owner instead of the "api" sentinel.
@@ -689,7 +782,11 @@ async def build_chat_context(
         skills_enabled = False
     logger.debug(
         "Memory enabled=%s for user=%s (incognito=%s, no_memory=%s, pref=%s)",
-        mem_enabled, user, incognito, no_memory, uprefs.get("memory_enabled", "NOT_SET"),
+        mem_enabled,
+        user,
+        incognito,
+        no_memory,
+        uprefs.get("memory_enabled", "NOT_SET"),
     )
 
     # Research-spinoff ("Discuss") sessions are grounded on the seeded report:
@@ -702,7 +799,12 @@ async def build_chat_context(
 
     # Use RAG?
     use_rag_val = (str(use_rag).lower() != "false") if use_rag is not None else True
-    if incognito or not allow_tool_preprocessing or is_research_spinoff or casual_low_signal:
+    if (
+        incognito
+        or not allow_tool_preprocessing
+        or is_research_spinoff
+        or casual_low_signal
+    ):
         use_rag_val = False
 
     # If pre-fetched search context was provided (compare mode), skip live web search
@@ -711,7 +813,11 @@ async def build_chat_context(
     # Build context preface
     # The stream path uses enhanced_message (with CoT/preprocessing applied),
     # the sync path uses text_for_context.
-    _ctx_msg = preprocessed.enhanced_message if use_enhanced_message else preprocessed.text_for_context
+    _ctx_msg = (
+        preprocessed.enhanced_message
+        if use_enhanced_message
+        else preprocessed.text_for_context
+    )
     _preface_kwargs = dict(
         message=_ctx_msg,
         session=sess,
@@ -727,14 +833,18 @@ async def build_chat_context(
     )
     if use_rag is not None or is_research_spinoff or casual_low_signal:
         _preface_kwargs["use_rag"] = use_rag_val
-    preface, rag_sources, web_sources = chat_processor.build_context_preface(**_preface_kwargs)
+    preface, rag_sources, web_sources = chat_processor.build_context_preface(
+        **_preface_kwargs
+    )
 
     # Capture used memories immediately
-    used_memories = getattr(chat_processor, '_last_used_memories', [])
+    used_memories = getattr(chat_processor, "_last_used_memories", [])
 
     # Inject pre-fetched search context (compare mode)
     if search_context and allow_tool_preprocessing and not casual_low_signal:
-        preface.append(untrusted_context_message("prefetched search context", search_context))
+        preface.append(
+            untrusted_context_message("prefetched search context", search_context)
+        )
 
     # YouTube transcripts
     for transcript in preprocessed.youtube_transcripts:
@@ -765,6 +875,7 @@ async def build_chat_context(
     if not agent_mode:
         try:
             from src.user_time import current_datetime_context_message
+
             _dt_msg = current_datetime_context_message()
             if messages and messages[-1].get("role") == "user":
                 messages.insert(len(messages) - 1, _dt_msg)
@@ -775,7 +886,12 @@ async def build_chat_context(
 
     # Auto-compact
     messages, context_length, was_compacted = await maybe_compact(
-        sess, sess.endpoint_url, sess.model, messages, sess.headers, owner=user,
+        sess,
+        sess.endpoint_url,
+        sess.model,
+        messages,
+        sess.headers,
+        owner=user,
     )
     messages = trim_for_context(messages, context_length)
 
@@ -824,111 +940,150 @@ def _normalize_thinking(text: str) -> str:
     - Garbled <think> tags (reasoning before the tag, unclosed tags)
     """
     import re
+
     if not text:
         return text
     from src.text_helpers import normalize_thinking_markup
+
     text = normalize_thinking_markup(text)
     reasoning_prefix_re = re.compile(
-        r'^\s*(?:thinking(?:\s+process)?\s*:|the user |i need |i should |i will |they are |the question |i can )',
+        r"^\s*(?:thinking(?:\s+process)?\s*:|the user |i need |i should |i will |they are |the question |i can )",
         re.IGNORECASE,
     )
-    thinking_prefix_re = re.compile(r'^thinking(?:\s+process)?\s*:\s*', re.IGNORECASE)
+    thinking_prefix_re = re.compile(r"^thinking(?:\s+process)?\s*:\s*", re.IGNORECASE)
 
     # Handle garbled <think> tags: reasoning text followed by <think> as separator
     # e.g. "The user said...I should respond.\n<think>Hey! What's up?"
     garbled = re.match(
-        r'^([\s\S]+?)\n*<think(?:ing)?>\s*([\s\S]*?)(?:</think(?:ing)?>)?\s*$',
-        text, re.IGNORECASE
+        r"^([\s\S]+?)\n*<think(?:ing)?>\s*([\s\S]*?)(?:</think(?:ing)?>)?\s*$",
+        text,
+        re.IGNORECASE,
     )
     if garbled:
         before = garbled.group(1).strip()
         after = garbled.group(2).strip()
         # Only treat as garbled if the part before <think> looks like reasoning
         reasoning_starts = (
-            'The user ', 'I need ', 'I should ', 'I will ',
-            'They are ', 'The question ', 'I can ',
-            'Thinking Process', 'Thinking:',
+            "The user ",
+            "I need ",
+            "I should ",
+            "I will ",
+            "They are ",
+            "The question ",
+            "I can ",
+            "Thinking Process",
+            "Thinking:",
         )
         stripped_before = before.lstrip()
-        if any(stripped_before.startswith(p) for p in reasoning_starts) or reasoning_prefix_re.match(stripped_before):
+        if any(
+            stripped_before.startswith(p) for p in reasoning_starts
+        ) or reasoning_prefix_re.match(stripped_before):
             # Strip "Thinking:" prefix from the thinking content
-            stripped_before = thinking_prefix_re.sub('', stripped_before)
-            return '<think>' + stripped_before + '</think>\n' + after
+            stripped_before = thinking_prefix_re.sub("", stripped_before)
+            return "<think>" + stripped_before + "</think>\n" + after
 
-    if '<think' in text.lower():
+    if "<think" in text.lower():
         return text  # already has proper think tags
 
     # Qwen3.5: "Thinking Process:" or "Thinking:" prefix
     if thinking_prefix_re.match(text.lstrip()):
         # Try clean boundary first
         m = re.match(
-            r'^(Thinking(?:\s+Process)?:[\s\S]*?)(\n\n(?=[A-Z]|Hey|Yo|Hi|Sure|I |What|Here|Let|The |This |OK|Ok|Yes|No |So |Well |Thank|Alright|Of course|Absolutely|Great|Hello|As ))',
-            text, re.IGNORECASE | re.MULTILINE
+            r"^(Thinking(?:\s+Process)?:[\s\S]*?)(\n\n(?=[A-Z]|Hey|Yo|Hi|Sure|I |What|Here|Let|The |This |OK|Ok|Yes|No |So |Well |Thank|Alright|Of course|Absolutely|Great|Hello|As ))",
+            text,
+            re.IGNORECASE | re.MULTILINE,
         )
         if m:
-            think = thinking_prefix_re.sub('', m.group(1)).strip()
-            return '<think>' + think + '</think>' + text[m.end()-2:]
+            think = thinking_prefix_re.sub("", m.group(1)).strip()
+            return "<think>" + think + "</think>" + text[m.end() - 2 :]
         # Fallback: find last non-indented paragraph as reply
-        parts = text.split('\n\n')
+        parts = text.split("\n\n")
         for i in range(len(parts) - 1, 0, -1):
             line = parts[i].strip()
-            if line and not re.match(r'^[\d*\-\s(]', line) and len(line) > 5:
-                think = thinking_prefix_re.sub('', '\n\n'.join(parts[:i])).strip()
-                reply = '\n\n'.join(parts[i:])
-                return '<think>' + think + '</think>\n\n' + reply
+            if line and not re.match(r"^[\d*\-\s(]", line) and len(line) > 5:
+                think = thinking_prefix_re.sub("", "\n\n".join(parts[:i])).strip()
+                reply = "\n\n".join(parts[i:])
+                return "<think>" + think + "</think>\n\n" + reply
         # Last resort: look for a quoted final response inside the thinking
         # Qwen often drafts the reply as "Option: ..." or * "reply text"
         last_quote = re.findall(r'["\u201c]([^"\u201d]{10,})["\u201d]', text)
         if last_quote:
             reply = last_quote[-1].strip()
-            think = thinking_prefix_re.sub('', text).strip()
-            return '<think>' + think + '</think>\n\n' + reply
+            think = thinking_prefix_re.sub("", text).strip()
+            return "<think>" + think + "</think>\n\n" + reply
         # Truly no reply found
-        think = thinking_prefix_re.sub('', text).strip()
-        return '<think>' + think + '</think>'
+        think = thinking_prefix_re.sub("", text).strip()
+        return "<think>" + think + "</think>"
 
     # Gemma-style: starts with reasoning ("The user", "I need", "I should", etc.)
     stripped_text = text.lstrip()
-    first_line = stripped_text.split('\n')[0].strip()
+    first_line = stripped_text.split("\n")[0].strip()
     reasoning_starts = (
-        'The user ', 'I need ', 'I should ', 'I will ',
-        'They are ', 'The question ', 'I can ',
+        "The user ",
+        "I need ",
+        "I should ",
+        "I will ",
+        "They are ",
+        "The question ",
+        "I can ",
     )
     reply_starts = (
-        'Hey', 'Hi ', 'Hi!', 'Hello', 'Sure', 'Yes', 'No ', 'No,', 'Yo', 'OK',
-        'Here', 'Absolutely', 'Of course', 'Great', 'Alright',
-        'Thanks', 'Welcome', 'Good ', "I'm happy", "I'd be",
+        "Hey",
+        "Hi ",
+        "Hi!",
+        "Hello",
+        "Sure",
+        "Yes",
+        "No ",
+        "No,",
+        "Yo",
+        "OK",
+        "Here",
+        "Absolutely",
+        "Of course",
+        "Great",
+        "Alright",
+        "Thanks",
+        "Welcome",
+        "Good ",
+        "I'm happy",
+        "I'd be",
     )
     if any(first_line.startswith(p) for p in reasoning_starts):
         # Try line-by-line split first
-        lines = stripped_text.split('\n')
+        lines = stripped_text.split("\n")
         for i, line in enumerate(lines):
             stripped = line.strip()
             if not stripped:
                 continue
             if i > 0 and any(stripped.startswith(p) for p in reply_starts):
-                think = '\n'.join(lines[:i])
-                reply = '\n'.join(lines[i:])
-                return '<think>' + think + '</think>\n' + reply
+                think = "\n".join(lines[:i])
+                reply = "\n".join(lines[i:])
+                return "<think>" + think + "</think>\n" + reply
 
         # Try within-line split — model mashed thinking + reply on one line
         # Look for reply pattern after a period or sentence end
         for p in reply_starts:
             # Match: "...reasoning text.Reply text" or "...reasoning text. Reply text"
-            pattern = r'([.!?])\s*(' + re.escape(p) + r')'
+            pattern = r"([.!?])\s*(" + re.escape(p) + r")"
             m = re.search(pattern, stripped_text)
             if m and m.start() > 20:  # at least 20 chars of reasoning before
-                think = stripped_text[:m.start() + 1]  # include the period
-                reply = stripped_text[m.start() + 1:].lstrip()
-                return '<think>' + think + '</think>\n' + reply
+                think = stripped_text[: m.start() + 1]  # include the period
+                reply = stripped_text[m.start() + 1 :].lstrip()
+                return "<think>" + think + "</think>\n" + reply
 
         # Last resort: find last non-reasoning line
         for i in range(len(lines) - 1, 0, -1):
             stripped = lines[i].strip()
-            if stripped and not any(stripped.startswith(p) for p in reasoning_starts) and not stripped.startswith('*') and len(stripped) > 3:
-                think = '\n'.join(lines[:i])
-                reply = '\n'.join(lines[i:])
-                return '<think>' + think + '</think>\n' + reply
+            if (
+                stripped
+                and not any(stripped.startswith(p) for p in reasoning_starts)
+                and not stripped.startswith("*")
+                and len(stripped) > 3
+            ):
+                think = "\n".join(lines[:i])
+                reply = "\n".join(lines[i:])
+                return "<think>" + think + "</think>\n" + reply
 
     return text
 
@@ -936,9 +1091,11 @@ def _normalize_thinking(text: str) -> str:
 def _extract_thinking_meta(text: str) -> dict | None:
     """Extract thinking content into metadata, return {thinking, reply, time} or None."""
     import re
+
     if not text:
         return None
     from src.text_helpers import normalize_thinking_markup
+
     original_text = text
     text = normalize_thinking_markup(text)
     normalized_changed = text != original_text
@@ -947,9 +1104,13 @@ def _extract_thinking_meta(text: str) -> dict | None:
     time_match = re.search(r'<think(?:ing)?\s+time="([\d.]+)"', text)
     think_time = time_match.group(1) if time_match else None
     # Strip time attr for parsing
-    clean = re.sub(r'<think(?:ing)?\s+time="[\d.]+"', '<think', text)
+    clean = re.sub(r'<think(?:ing)?\s+time="[\d.]+"', "<think", text)
 
-    think_match = re.match(r'^[\s]*<think(?:ing)?>([\s\S]*?)</think(?:ing)?>\s*([\s\S]*)', clean, re.IGNORECASE)
+    think_match = re.match(
+        r"^[\s]*<think(?:ing)?>([\s\S]*?)</think(?:ing)?>\s*([\s\S]*)",
+        clean,
+        re.IGNORECASE,
+    )
     if think_match:
         thinking = think_match.group(1).strip()
         reply = think_match.group(2).strip()
@@ -964,8 +1125,12 @@ def _extract_thinking_meta(text: str) -> dict | None:
 
     # Detect Thinking Process: or Gemma-style reasoning
     normalized = _normalize_thinking(text)
-    if '<think>' in normalized:
-        think_match2 = re.match(r'^[\s]*<think(?:ing)?>([\s\S]*?)</think(?:ing)?>\s*([\s\S]*)', normalized, re.IGNORECASE)
+    if "<think>" in normalized:
+        think_match2 = re.match(
+            r"^[\s]*<think(?:ing)?>([\s\S]*?)</think(?:ing)?>\s*([\s\S]*)",
+            normalized,
+            re.IGNORECASE,
+        )
         if think_match2:
             thinking = think_match2.group(1).strip()
             reply = think_match2.group(2).strip()
@@ -978,7 +1143,9 @@ def _extract_thinking_meta(text: str) -> dict | None:
     return None
 
 
-def clean_thinking_for_save(content: str, metadata: dict | None = None) -> tuple[str, dict]:
+def clean_thinking_for_save(
+    content: str, metadata: dict | None = None
+) -> tuple[str, dict]:
     """Extract thinking from content into metadata. Use for save paths that bypass save_assistant_response."""
     md = dict(metadata) if metadata else {}
     info = _extract_thinking_meta(content)
@@ -1009,6 +1176,7 @@ def save_assistant_response(
 ):
     """Add assistant response to session history. In incognito mode, keeps in-memory context but skips DB persistence."""
     md = dict(last_metrics) if last_metrics else {}
+
     def _model_value(value) -> str:
         if value is None:
             return ""
@@ -1016,8 +1184,14 @@ def save_assistant_response(
             value = str(value)
         return value.strip()
 
-    requested_model = _model_value(md.get("requested_model") or md.get("selected_model") or getattr(sess, "model", ""))
-    actual_model = _model_value(md.get("model") or md.get("actual_model") or requested_model)
+    requested_model = _model_value(
+        md.get("requested_model")
+        or md.get("selected_model")
+        or getattr(sess, "model", "")
+    )
+    actual_model = _model_value(
+        md.get("model") or md.get("actual_model") or requested_model
+    )
     if requested_model:
         md["requested_model"] = requested_model
     if actual_model:
@@ -1051,6 +1225,7 @@ def save_assistant_response(
 
     if not incognito:
         from core.database import update_session_last_accessed
+
         update_session_last_accessed(session_id)
         session_manager.save_sessions()
 
@@ -1078,12 +1253,15 @@ def _is_session_stream_active(session_id: str) -> bool:
     a circular import (chat_routes imports this module at load time)."""
     try:
         from routes import chat_routes as _cr
+
         return session_id in getattr(_cr, "_active_streams", {})
     except Exception:
         return False
 
 
-async def _run_extraction_jobs_sequentially(session_id: str, jobs: list, max_wait_s: float = 120.0):
+async def _run_extraction_jobs_sequentially(
+    session_id: str, jobs: list, max_wait_s: float = 120.0
+):
     """Run queued background-extraction coroutines one at a time, only once
     no chat completion is actively streaming for this session.
 
@@ -1115,7 +1293,12 @@ async def _run_extraction_jobs_sequentially(session_id: str, jobs: list, max_wai
         try:
             await job
         except Exception:
-            logger.warning("[bg-extract] %s extraction job failed for session %s", name, session_id, exc_info=True)
+            logger.warning(
+                "[bg-extract] %s extraction job failed for session %s",
+                name,
+                session_id,
+                exc_info=True,
+            )
 
 
 def run_post_response_tasks(
@@ -1157,18 +1340,37 @@ def run_post_response_tasks(
     _extraction_jobs: list = []
 
     # Memory extraction — only every 4th message pair to avoid excess LLM calls
-    _msg_count = len(sess.history) if hasattr(sess, 'history') else 0
+    _msg_count = len(sess.history) if hasattr(sess, "history") else 0
     _should_extract = (_msg_count >= 4) and (_msg_count % 4 == 0)
-    if allow_background_extraction and not incognito and not compare_mode and _should_extract and uprefs.get("auto_memory", True):
+    if (
+        allow_background_extraction
+        and not incognito
+        and not compare_mode
+        and _should_extract
+        and uprefs.get("auto_memory", True)
+    ):
         from services.memory.memory_extractor import extract_and_store
         from src.task_endpoint import resolve_task_endpoint
+
         t_url, t_model, t_headers = resolve_task_endpoint(
-            sess.endpoint_url, sess.model, sess.headers, owner=owner,
+            sess.endpoint_url,
+            sess.model,
+            sess.headers,
+            owner=owner,
         )
-        _extraction_jobs.append(("memory", extract_and_store(
-            sess, memory_manager, memory_vector,
-            t_url, t_model, t_headers,
-        )))
+        _extraction_jobs.append(
+            (
+                "memory",
+                extract_and_store(
+                    sess,
+                    memory_manager,
+                    memory_vector,
+                    t_url,
+                    t_model,
+                    t_headers,
+                ),
+            )
+        )
 
     # Skill extraction from complex agent runs. Only when the user actually
     # chose agent mode — not a chat we auto-escalated for a notes/calendar
@@ -1181,8 +1383,13 @@ def run_post_response_tasks(
     logger.debug(
         "[skill-extract] gate: extract_skills=%s auto_skills=%s incognito=%s "
         "compare=%s rounds=%d tools=%d skills_manager=%s",
-        extract_skills, auto_skills_enabled, incognito, compare_mode,
-        agent_rounds, agent_tool_calls, "set" if skills_manager else "MISSING",
+        extract_skills,
+        auto_skills_enabled,
+        incognito,
+        compare_mode,
+        agent_rounds,
+        agent_tool_calls,
+        "set" if skills_manager else "MISSING",
     )
     if (
         extract_skills
@@ -1200,16 +1407,29 @@ def run_post_response_tasks(
         else:
             from services.memory.skill_extractor import maybe_extract_skill
             from src.task_endpoint import resolve_task_endpoint
+
             s_url, s_model, s_headers = resolve_task_endpoint(
-                sess.endpoint_url, sess.model, sess.headers, owner=owner,
+                sess.endpoint_url,
+                sess.model,
+                sess.headers,
+                owner=owner,
             )
             logger.debug("[skill-extract] dispatching extractor (model=%s)", s_model)
-            _extraction_jobs.append(("skill", maybe_extract_skill(
-                sess, skills_manager,
-                s_url, s_model, s_headers,
-                agent_rounds, agent_tool_calls,
-                owner=owner,
-            )))
+            _extraction_jobs.append(
+                (
+                    "skill",
+                    maybe_extract_skill(
+                        sess,
+                        skills_manager,
+                        s_url,
+                        s_model,
+                        s_headers,
+                        agent_rounds,
+                        agent_tool_calls,
+                        owner=owner,
+                    ),
+                )
+            )
 
     if _extraction_jobs:
         _spawn_bg(_run_extraction_jobs_sequentially(session_id, _extraction_jobs))
@@ -1220,10 +1440,15 @@ def run_post_response_tasks(
 
     # Webhook
     if webhook_manager and not compare_mode:
-        webhook_manager.fire_and_forget("chat.completed", {
-            "session_id": session_id, "model": sess.model,
-            "user_message": message, "response": full_response[:2000],
-        })
+        webhook_manager.fire_and_forget(
+            "chat.completed",
+            {
+                "session_id": session_id,
+                "model": sess.model,
+                "user_message": message,
+                "response": full_response[:2000],
+            },
+        )
 
     # Auto-name
     if needs_auto_name(sess.name):

@@ -9,8 +9,6 @@ Integrates with Odysseus's existing agent/tool system.
 
 from __future__ import annotations
 
-import math
-import re
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
@@ -19,11 +17,11 @@ from typing import Dict, List, Optional
 class AgentScore:
     id: str
     name: str
-    quality: float      # 0..1 — how well this agent matches the task
-    cost: float         # 0..1 — lower is cheaper (inverted)
-    recency: float      # 0..1 — how recently used
-    affinity: float     # 0..1 — domain/task affinity (from history)
-    diversity: float    # 0..1 — how different from other candidates
+    quality: float  # 0..1 — how well this agent matches the task
+    cost: float  # 0..1 — lower is cheaper (inverted)
+    recency: float  # 0..1 — how recently used
+    affinity: float  # 0..1 — domain/task affinity (from history)
+    diversity: float  # 0..1 — how different from other candidates
     score: float = 0.0  # weighted composite
 
     CARRIER_BIAS = 0.05

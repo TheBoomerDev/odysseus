@@ -59,9 +59,14 @@ def test_chat_preface_excludes_current_time_for_non_agent_chat():
         use_rag=False,
     )
 
-    assert all(msg.get("role") != "system" or "## Current date and time" not in (msg.get("content") or "")
-               for msg in preface)
-    assert all("## Current date and time" not in (msg.get("content") or "") for msg in preface)
+    assert all(
+        msg.get("role") != "system"
+        or "## Current date and time" not in (msg.get("content") or "")
+        for msg in preface
+    )
+    assert all(
+        "## Current date and time" not in (msg.get("content") or "") for msg in preface
+    )
 
 
 def test_current_datetime_context_message_is_user_role_not_system():
@@ -74,7 +79,9 @@ def test_current_datetime_context_message_is_user_role_not_system():
     set_user_tz_offset(600)
     set_user_tz_name("Australia/Brisbane")
 
-    msg = current_datetime_context_message(datetime(2026, 6, 1, 9, 16, tzinfo=timezone.utc))
+    msg = current_datetime_context_message(
+        datetime(2026, 6, 1, 9, 16, tzinfo=timezone.utc)
+    )
 
     assert msg["role"] == "user"
     assert "## Current date and time" in msg["content"]
@@ -94,7 +101,9 @@ def test_agent_system_prompt_includes_shared_current_time(monkeypatch):
     clear_user_time_context()
     set_user_tz_offset(600)
     set_user_tz_name("Australia/Brisbane")
-    monkeypatch.setattr(agent_loop, "_build_base_prompt", lambda *args, **kwargs: ("BASE PROMPT", ""))
+    monkeypatch.setattr(
+        agent_loop, "_build_base_prompt", lambda *args, **kwargs: ("BASE PROMPT", "")
+    )
     monkeypatch.setattr(agent_loop, "set_active_model", lambda model: None)
     monkeypatch.setattr(agent_loop, "get_builtin_overrides", lambda: {})
     monkeypatch.setattr(agent_loop, "_cached_base_prompt", None)
@@ -110,9 +119,17 @@ def test_agent_system_prompt_includes_shared_current_time(monkeypatch):
     system_messages = [m for m in messages if m["role"] == "system"]
     assert system_messages, "expected at least one system message"
     assert system_messages[0]["content"] == "BASE PROMPT"
-    assert all("## Current date and time" not in (m.get("content") or "") for m in system_messages)
+    assert all(
+        "## Current date and time" not in (m.get("content") or "")
+        for m in system_messages
+    )
 
-    datetime_messages = [m for m in messages if m["role"] == "user" and "## Current date and time" in (m.get("content") or "")]
+    datetime_messages = [
+        m
+        for m in messages
+        if m["role"] == "user"
+        and "## Current date and time" in (m.get("content") or "")
+    ]
     assert len(datetime_messages) == 1
     assert "Australia/Brisbane, UTC+10:00" in datetime_messages[0]["content"]
 

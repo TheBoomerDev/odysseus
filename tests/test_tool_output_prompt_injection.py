@@ -26,9 +26,17 @@ from unittest.mock import MagicMock
 
 # ── module-load stubbing (mirror tests/test_skill_index_prompt_injection.py) ──
 for _mod in [
-    "sqlalchemy", "sqlalchemy.orm", "sqlalchemy.ext", "sqlalchemy.ext.declarative",
-    "sqlalchemy.ext.hybrid", "sqlalchemy.sql", "sqlalchemy.sql.expression",
-    "src.database", "src.agent_tools", "core.models", "core.database",
+    "sqlalchemy",
+    "sqlalchemy.orm",
+    "sqlalchemy.ext",
+    "sqlalchemy.ext.declarative",
+    "sqlalchemy.ext.hybrid",
+    "sqlalchemy.sql",
+    "sqlalchemy.sql.expression",
+    "src.database",
+    "src.agent_tools",
+    "core.models",
+    "core.database",
 ]:
     if _mod not in sys.modules:
         sys.modules[_mod] = MagicMock()
@@ -56,7 +64,9 @@ def test_non_native_tool_results_are_wrapped_untrusted():
         round_num=1,
     )
 
-    carriers = [m for m in messages if MALICIOUS_TOOL_OUTPUT in (m.get("content") or "")]
+    carriers = [
+        m for m in messages if MALICIOUS_TOOL_OUTPUT in (m.get("content") or "")
+    ]
     assert carriers, "tool output must still be passed back to the model"
     msg = carriers[-1]
     assert (msg.get("metadata") or {}).get("trusted") is False, (

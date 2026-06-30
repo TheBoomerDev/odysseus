@@ -15,7 +15,9 @@ class _FakeCollection:
         rows = []
         for doc_id, row in self._docs.items():
             metadata = row["metadata"]
-            if where and any(metadata.get(key) != value for key, value in where.items()):
+            if where and any(
+                metadata.get(key) != value for key, value in where.items()
+            ):
                 continue
             rows.append((doc_id, row))
         return {
@@ -42,25 +44,27 @@ def test_rename_owner_updates_metadata_used_by_owner_filtered_search(tmp_path):
     new_dir = tmp_path / "alice2"
     old_file = old_dir / "note.txt"
     new_file = new_dir / "note.txt"
-    collection = _FakeCollection([
-        (
-            "doc-old",
-            "private vector note",
-            {
-                "owner": "alice",
-                "source": str(old_file),
-                "directory": str(old_dir),
-            },
-        ),
-        (
-            "doc-other",
-            "other vector note",
-            {
-                "owner": "bob",
-                "source": str(tmp_path / "bob" / "note.txt"),
-            },
-        ),
-    ])
+    collection = _FakeCollection(
+        [
+            (
+                "doc-old",
+                "private vector note",
+                {
+                    "owner": "alice",
+                    "source": str(old_file),
+                    "directory": str(old_dir),
+                },
+            ),
+            (
+                "doc-other",
+                "other vector note",
+                {
+                    "owner": "bob",
+                    "source": str(tmp_path / "bob" / "note.txt"),
+                },
+            ),
+        ]
+    )
     store = _store(collection)
 
     result = store.rename_owner(
@@ -78,4 +82,7 @@ def test_rename_owner_updates_metadata_used_by_owner_filtered_search(tmp_path):
     assert renamed[0]["metadata"]["owner"] == "alice2"
     assert renamed[0]["metadata"]["source"] == str(new_file)
     assert renamed[0]["metadata"]["directory"] == str(new_dir)
-    assert store._keyword_search_fallback("other", k=10, owner="bob")[0]["id"] == "doc-other"
+    assert (
+        store._keyword_search_fallback("other", k=10, owner="bob")[0]["id"]
+        == "doc-other"
+    )

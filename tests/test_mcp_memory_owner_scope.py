@@ -65,28 +65,32 @@ def test_mcp_memory_uses_configured_owner_for_all_operations(monkeypatch, tmp_pa
     assert "Alice likes green tea" in search_text
     assert "Bob likes espresso" not in search_text
 
-    add_text = _tool_text({
-        "action": "add",
-        "text": "Alice prefers concise notes",
-        "category": "preference",
-    })
+    add_text = _tool_text(
+        {
+            "action": "add",
+            "text": "Alice prefers concise notes",
+            "category": "preference",
+        }
+    )
     assert "Memory added" in add_text
     added = next(
-        entry for entry in manager.load_all()
+        entry
+        for entry in manager.load_all()
         if entry["text"] == "Alice prefers concise notes"
     )
     assert added["owner"] == "alice"
     assert vector.added == [(added["id"], "Alice prefers concise notes")]
 
-    edit_text = _tool_text({
-        "action": "edit",
-        "memory_id": bob["id"][:8],
-        "text": "Bob changed",
-    })
+    edit_text = _tool_text(
+        {
+            "action": "edit",
+            "memory_id": bob["id"][:8],
+            "text": "Bob changed",
+        }
+    )
     assert edit_text == "Error: Memory 'bbbbbbbb' not found"
     bob_after_edit = next(
-        entry for entry in manager.load_all()
-        if entry["id"] == bob["id"]
+        entry for entry in manager.load_all() if entry["id"] == bob["id"]
     )
     assert bob_after_edit["text"] == "Bob likes espresso"
 
@@ -95,9 +99,13 @@ def test_mcp_memory_uses_configured_owner_for_all_operations(monkeypatch, tmp_pa
     assert any(entry["id"] == bob["id"] for entry in manager.load_all())
 
 
-def test_mcp_memory_fails_closed_without_owner_for_owner_scoped_store(monkeypatch, tmp_path):
+def test_mcp_memory_fails_closed_without_owner_for_owner_scoped_store(
+    monkeypatch, tmp_path
+):
     manager = MemoryManager(str(tmp_path))
-    alice = _entry(manager, "Alice private memory", owner="alice", memory_id="aaaaaaaa-0000")
+    alice = _entry(
+        manager, "Alice private memory", owner="alice", memory_id="aaaaaaaa-0000"
+    )
     bob = _entry(manager, "Bob private memory", owner="bob", memory_id="bbbbbbbb-0000")
     manager.save([alice, bob])
     _configure_server(monkeypatch, manager, FakeVector())
@@ -112,7 +120,9 @@ def test_mcp_memory_fails_closed_without_owner_for_owner_scoped_store(monkeypatc
     ]
 
     for arguments in actions:
-        assert _tool_text(arguments).startswith("Error: Memory MCP owner is not configured")
+        assert _tool_text(arguments).startswith(
+            "Error: Memory MCP owner is not configured"
+        )
 
     assert manager.load_all() == before
 
@@ -133,16 +143,20 @@ def test_mcp_memory_preserves_ownerless_local_behavior(monkeypatch, tmp_path):
     add_text = _tool_text({"action": "add", "text": "Another local memory"})
     assert "Memory added" in add_text
     added = next(
-        entry for entry in manager.load_all()
-        if entry["text"] == "Another local memory"
+        entry for entry in manager.load_all() if entry["text"] == "Another local memory"
     )
     assert "owner" not in added
 
-    assert _tool_text({
-        "action": "edit",
-        "memory_id": legacy["id"][:8],
-        "text": "Updated local memory",
-    }) == "Memory updated: Updated local memory"
+    assert (
+        _tool_text(
+            {
+                "action": "edit",
+                "memory_id": legacy["id"][:8],
+                "text": "Updated local memory",
+            }
+        )
+        == "Memory updated: Updated local memory"
+    )
     assert any(entry["text"] == "Updated local memory" for entry in manager.load_all())
 
     delete_text = _tool_text({"action": "delete", "memory_id": legacy["id"][:8]})

@@ -13,17 +13,19 @@ from src.caldav_writeback import build_event_ical
 
 
 def test_event_to_ical_serializes_core_fields_and_rrule():
-    ical = build_event_ical({
-        "uid": "evt-123",
-        "summary": "Planning",
-        "description": "Bring notes",
-        "location": "HQ",
-        "dtstart": datetime(2026, 6, 5, 9, 0),
-        "dtend": datetime(2026, 6, 5, 10, 0),
-        "all_day": False,
-        "is_utc": False,
-        "rrule": "FREQ=WEEKLY;COUNT=2",
-    })
+    ical = build_event_ical(
+        {
+            "uid": "evt-123",
+            "summary": "Planning",
+            "description": "Bring notes",
+            "location": "HQ",
+            "dtstart": datetime(2026, 6, 5, 9, 0),
+            "dtend": datetime(2026, 6, 5, 10, 0),
+            "all_day": False,
+            "is_utc": False,
+            "rrule": "FREQ=WEEKLY;COUNT=2",
+        }
+    )
 
     assert "UID:evt-123" in ical
     assert "SUMMARY:Planning" in ical
@@ -82,11 +84,15 @@ def test_database_declares_and_migrates_caldav_remote_metadata():
         assert needle in source
 
 
-def test_failed_remote_delete_leaves_tombstone_and_later_retry_cleans_up(tmp_path, monkeypatch):
+def test_failed_remote_delete_leaves_tombstone_and_later_retry_cleans_up(
+    tmp_path, monkeypatch
+):
     import src.caldav_writeback as writeback
 
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'calendar.db'}")
-    spec = importlib.util.spec_from_file_location("core.database", Path("core/database.py"))
+    spec = importlib.util.spec_from_file_location(
+        "core.database", Path("core/database.py")
+    )
     dbmod = importlib.util.module_from_spec(spec)
     monkeypatch.setitem(sys.modules, "core.database", dbmod)
     spec.loader.exec_module(dbmod)
@@ -131,7 +137,9 @@ def test_failed_remote_delete_leaves_tombstone_and_later_retry_cleans_up(tmp_pat
         session.commit()
 
         assert session.query(CalendarEvent).filter_by(uid="evt-delete").first() is None
-        tombstone = session.query(CalendarDeletedEvent).filter_by(uid="evt-delete").first()
+        tombstone = (
+            session.query(CalendarDeletedEvent).filter_by(uid="evt-delete").first()
+        )
         assert tombstone is not None
         assert tombstone.remote_href.endswith("evt-delete.ics")
     finally:
@@ -147,7 +155,9 @@ def test_failed_remote_delete_leaves_tombstone_and_later_retry_cleans_up(tmp_pat
 
     session = TestingSessionLocal()
     try:
-        tombstone = session.query(CalendarDeletedEvent).filter_by(uid="evt-delete").first()
+        tombstone = (
+            session.query(CalendarDeletedEvent).filter_by(uid="evt-delete").first()
+        )
         assert tombstone is not None
         assert "temporary remote delete failure" in tombstone.last_error
     finally:
@@ -163,7 +173,10 @@ def test_failed_remote_delete_leaves_tombstone_and_later_retry_cleans_up(tmp_pat
 
     session = TestingSessionLocal()
     try:
-        assert session.query(CalendarDeletedEvent).filter_by(uid="evt-delete").first() is None
+        assert (
+            session.query(CalendarDeletedEvent).filter_by(uid="evt-delete").first()
+            is None
+        )
         assert session.query(CalendarEvent).filter_by(uid="evt-delete").first() is None
     finally:
         session.close()

@@ -10,6 +10,7 @@ diagnostic distinction the /api/diagnostics/services probe is built to surface.
 
 This test fails before the fix (memory_vector is None) and passes after it.
 """
+
 from unittest.mock import MagicMock
 
 import src.app_initializer as app_init
@@ -19,6 +20,7 @@ import src.service_health as sh
 
 class _UnhealthyVectorStore:
     """Stand-in for a MemoryVectorStore whose init failed: present but inert."""
+
     healthy = False
 
     def count(self):
@@ -32,10 +34,19 @@ def _neutralize_collaborators(monkeypatch):
     """Stub out everything initialize_managers() builds except the vector store,
     so the test isolates the memory_vector health-handling branch."""
     for name in [
-        "MemoryManager", "SkillsManager", "SessionManager", "UploadHandler",
-        "PersonalDocsManager", "APIKeyManager", "PresetManager",
-        "MemoryProviderRegistry", "NativeMemoryProvider", "ChatProcessor",
-        "ResearchHandler", "ChatHandler", "ModelDiscovery",
+        "MemoryManager",
+        "SkillsManager",
+        "SessionManager",
+        "UploadHandler",
+        "PersonalDocsManager",
+        "APIKeyManager",
+        "PresetManager",
+        "MemoryProviderRegistry",
+        "NativeMemoryProvider",
+        "ChatProcessor",
+        "ResearchHandler",
+        "ChatHandler",
+        "ModelDiscovery",
     ]:
         monkeypatch.setattr(app_init, name, lambda *a, **k: MagicMock())
     monkeypatch.setattr(app_init, "set_session_manager", lambda *a, **k: None)
@@ -48,14 +59,17 @@ def test_failed_memory_vector_init_is_kept_not_discarded(monkeypatch, tmp_path):
     # initialize_managers does `from src.memory_vector import MemoryVectorStore`
     # at call time, so patch it on the source module.
     monkeypatch.setattr(
-        memory_vector_mod, "MemoryVectorStore",
+        memory_vector_mod,
+        "MemoryVectorStore",
         lambda *a, **k: _UnhealthyVectorStore(),
     )
 
     result = app_init.initialize_managers(str(tmp_path), rag_manager=None)
 
     mv = result["memory_vector"]
-    assert mv is not None, "unhealthy MemoryVectorStore was discarded (reported as DISABLED, not DEGRADED/DOWN)"
+    assert mv is not None, (
+        "unhealthy MemoryVectorStore was discarded (reported as DISABLED, not DEGRADED/DOWN)"
+    )
     assert mv.healthy is False
 
 

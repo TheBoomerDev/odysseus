@@ -99,7 +99,9 @@ def _compact_prompt_for(monkeypatch, history):
         captured["messages"] = messages
         return "Summary text"
 
-    monkeypatch.setattr(history_routes, "_verify_session_owner", lambda request, session_id: None)
+    monkeypatch.setattr(
+        history_routes, "_verify_session_owner", lambda request, session_id: None
+    )
     monkeypatch.setattr(history_routes, "SessionLocal", lambda: _FakeDb())
 
     import src.agent_runs as agent_runs
@@ -108,6 +110,7 @@ def _compact_prompt_for(monkeypatch, history):
     import src.model_context as model_context
 
     monkeypatch.setattr(agent_runs, "is_active", lambda session_id: False)
+
     def fake_resolve_endpoint(kind, owner=None):
         captured.setdefault("resolve_calls", []).append((kind, owner))
         return None, None, {}
@@ -115,7 +118,9 @@ def _compact_prompt_for(monkeypatch, history):
     monkeypatch.setattr(endpoint_resolver, "resolve_endpoint", fake_resolve_endpoint)
     monkeypatch.setattr(llm_core, "llm_call_async", fake_llm_call_async)
     monkeypatch.setattr(model_context, "estimate_tokens", lambda messages: 100)
-    monkeypatch.setattr(model_context, "get_context_length", lambda endpoint_url, model: 1000)
+    monkeypatch.setattr(
+        model_context, "get_context_length", lambda endpoint_url, model: 1000
+    )
 
     session = _FakeSession(history)
     manager = _FakeSessionManager(session)
@@ -142,8 +147,12 @@ def _registered_compact_response(monkeypatch, history, active_run=False):
         "router",
         APIRouter(prefix="/api", tags=["sessions"]),
     )
-    monkeypatch.setattr(session_routes, "_verify_session_owner", lambda request, session_id: None)
-    monkeypatch.setattr(history_routes, "_verify_session_owner", lambda request, session_id: None)
+    monkeypatch.setattr(
+        session_routes, "_verify_session_owner", lambda request, session_id: None
+    )
+    monkeypatch.setattr(
+        history_routes, "_verify_session_owner", lambda request, session_id: None
+    )
     monkeypatch.setattr(history_routes, "SessionLocal", lambda: _FakeDb())
 
     import src.agent_runs as agent_runs
@@ -151,6 +160,7 @@ def _registered_compact_response(monkeypatch, history, active_run=False):
     import src.llm_core as llm_core
 
     monkeypatch.setattr(agent_runs, "is_active", lambda session_id: active_run)
+
     def fake_resolve_endpoint(kind, owner=None):
         captured.setdefault("resolve_calls", []).append((kind, owner))
         return None, None, {}

@@ -9,7 +9,9 @@ SRC = Path(__file__).resolve().parent.parent / "static/js/document.js"
 
 def _function_body(name: str) -> str:
     text = SRC.read_text(encoding="utf-8")
-    match = re.search(rf"\n\s*(?:export\s+)?(?:async\s+)?function\s+{name}\([^)]*\)\s*\{{", text)
+    match = re.search(
+        rf"\n\s*(?:export\s+)?(?:async\s+)?function\s+{name}\([^)]*\)\s*\{{", text
+    )
     assert match, f"{name} not found"
 
     start = match.end()

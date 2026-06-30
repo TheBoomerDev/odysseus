@@ -42,7 +42,9 @@ class _Query:
         self._rows = list(rows)
 
     def filter(self, *predicates):
-        self._rows = [row for row in self._rows if all(pred(row) for pred in predicates)]
+        self._rows = [
+            row for row in self._rows if all(pred(row) for pred in predicates)
+        ]
         return self
 
     def all(self):
@@ -97,7 +99,9 @@ def test_visible_image_endpoint_for_base_rejects_same_url_other_owner(monkeypatc
     _patch_model(monkeypatch)
     rows = [_ep(URL, "bob")]
 
-    assert gallery_routes._visible_image_endpoint_for_base(_DB(rows), URL, "alice") is None
+    assert (
+        gallery_routes._visible_image_endpoint_for_base(_DB(rows), URL, "alice") is None
+    )
 
 
 def test_visible_image_endpoint_for_base_allows_shared_or_own(monkeypatch):
@@ -108,7 +112,9 @@ def test_visible_image_endpoint_for_base_allows_shared_or_own(monkeypatch):
         _ep(URL, "alice", api_key="own"),
     ]
 
-    ep = gallery_routes._visible_image_endpoint_for_base(_DB(rows), "https://api.example.com", "alice")
+    ep = gallery_routes._visible_image_endpoint_for_base(
+        _DB(rows), "https://api.example.com", "alice"
+    )
 
     assert ep is not None
     assert ep.owner == "alice"

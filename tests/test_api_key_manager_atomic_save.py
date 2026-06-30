@@ -1,8 +1,9 @@
 """Test that APIKeyManager.save() uses atomic write to prevent data loss."""
+
 import os
 import json
 import pytest
-from unittest.mock import patch, mock_open
+from unittest.mock import patch
 from src.api_key_manager import APIKeyManager
 
 

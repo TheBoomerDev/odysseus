@@ -30,7 +30,9 @@ def test_gemma4_12b_has_gguf_source():
 def test_gemma4_12b_rank_models_returns_it_for_8gb_vram():
     results = rank_models(_8gb_vram_system(), search="gemma-4-12B-it", limit=20)
     names = [r["name"] for r in results]
-    assert "google/gemma-4-12B-it" in names, "rank_models did not return gemma-4-12B-it for 8 GB VRAM"
+    assert "google/gemma-4-12B-it" in names, (
+        "rank_models did not return gemma-4-12B-it for 8 GB VRAM"
+    )
 
 
 def test_gemma4_12b_qat_entries_in_catalog():

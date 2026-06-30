@@ -68,7 +68,9 @@ def test_signature_png_normalization_rejects_invalid_inputs(raw):
     assert exc.value.status_code == 400
 
 
-@pytest.mark.parametrize("value", [0, -1, signature_routes._MAX_SIGNATURE_DIMENSION + 1, "20"])
+@pytest.mark.parametrize(
+    "value", [0, -1, signature_routes._MAX_SIGNATURE_DIMENSION + 1, "20"]
+)
 def test_signature_dimensions_are_bounded(value):
     with pytest.raises(HTTPException) as exc:
         signature_routes._signature_dimension(value)
@@ -82,16 +84,18 @@ def test_create_signature_stores_normalized_png_and_drops_svg(monkeypatch):
     monkeypatch.setattr(signature_routes, "Signature", _SignatureRecord)
     create_signature = _route_endpoint("/api/signatures", "POST")
 
-    response = asyncio.run(create_signature(
-        _request(),
-        signature_routes.SignatureCreate(
-            name=" Full signature ",
-            data=f"data:image/png;base64,{_PNG_B64}",
-            width=320,
-            height=80,
-            svg='<svg onload="alert(1)"></svg>',
-        ),
-    ))
+    response = asyncio.run(
+        create_signature(
+            _request(),
+            signature_routes.SignatureCreate(
+                name=" Full signature ",
+                data=f"data:image/png;base64,{_PNG_B64}",
+                width=320,
+                height=80,
+                svg='<svg onload="alert(1)"></svg>',
+            ),
+        )
+    )
 
     assert db.added.owner == "alice"
     assert db.added.name == "Full signature"

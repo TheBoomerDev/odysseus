@@ -7,6 +7,7 @@ run silently reported "The model returned an empty response".
 
 The fix routes every resolved task endpoint through ``_normalize_chat_endpoint``.
 """
+
 from src.task_scheduler import _normalize_chat_endpoint
 
 
@@ -27,8 +28,14 @@ def test_full_chat_url_is_unchanged_idempotent():
 
 def test_native_ollama_url_left_alone():
     # Native Ollama (/api...) has its own downstream normalizer — don't touch it.
-    assert _normalize_chat_endpoint("http://localhost:11434/api") == "http://localhost:11434/api"
-    assert _normalize_chat_endpoint("http://localhost:11434/api/chat") == "http://localhost:11434/api/chat"
+    assert (
+        _normalize_chat_endpoint("http://localhost:11434/api")
+        == "http://localhost:11434/api"
+    )
+    assert (
+        _normalize_chat_endpoint("http://localhost:11434/api/chat")
+        == "http://localhost:11434/api/chat"
+    )
 
 
 def test_empty_and_none_are_passthrough():

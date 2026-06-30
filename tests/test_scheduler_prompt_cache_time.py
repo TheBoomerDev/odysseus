@@ -18,9 +18,15 @@ from types import SimpleNamespace
 
 def _make_task(prompt="run the digest"):
     return SimpleNamespace(
-        crew_member_id=None, endpoint_url="http://ep/v1", model="m",
-        session_id="s", owner="admin", prompt=prompt,
-        name="job", max_steps=5, character_id=None,
+        crew_member_id=None,
+        endpoint_url="http://ep/v1",
+        model="m",
+        session_id="s",
+        owner="admin",
+        prompt=prompt,
+        name="job",
+        max_steps=5,
+        character_id=None,
     )
 
 
@@ -35,6 +41,7 @@ def _patch_scheduler_deps(monkeypatch):
 # ---------------------------------------------------------------------------
 # Test 1 — end-to-end: system is clean; agent-loop message ordering is correct
 # ---------------------------------------------------------------------------
+
 
 async def test_scheduler_agent_loop_path(monkeypatch):
     """Drive _execute_llm_task end-to-end (real _run_agent_loop, stubbed
@@ -56,6 +63,7 @@ async def test_scheduler_agent_loop_path(monkeypatch):
     monkeypatch.setattr("src.task_endpoint.resolve_task_candidates", lambda **kw: [])
 
     from src.task_scheduler import TaskScheduler
+
     await TaskScheduler(session_manager=None)._execute_llm_task(_make_task(), db=None)
 
     msgs = captured.get("messages", [])
@@ -72,6 +80,7 @@ async def test_scheduler_agent_loop_path(monkeypatch):
 # Test 2 — fallback path receives the same datetime context
 # ---------------------------------------------------------------------------
 
+
 async def test_scheduler_fallback_path(monkeypatch):
     """When _run_agent_loop raises, task_llm_call_async must receive
     [system, datetime user-context, task user-prompt] — the same ordering."""
@@ -87,9 +96,11 @@ async def test_scheduler_fallback_path(monkeypatch):
         return "fallback"
 
     import src.task_endpoint as _te
+
     monkeypatch.setattr(_te, "task_llm_call_async", _capture_call)
 
     from src.task_scheduler import TaskScheduler
+
     sched = TaskScheduler(session_manager=None)
     sched._run_agent_loop = _fail
     await sched._execute_llm_task(_make_task(prompt="send the digest"), db=None)
@@ -108,11 +119,12 @@ async def test_scheduler_fallback_path(monkeypatch):
 # Test 3 — current_datetime_context_message_for_tz() timezone resolution
 # ---------------------------------------------------------------------------
 
+
 def test_datetime_context_message_for_tz(monkeypatch):
     """Three cases with a fixed UTC timestamp (2026-06-25 18:00 UTC):
-      - explicit 'America/New_York' → 2:00 PM EDT, UTC-04:00
-      - None                        → UTC fallback: 6:00 PM, UTC+00:00
-      - invalid IANA name           → UTC fallback: same
+    - explicit 'America/New_York' → 2:00 PM EDT, UTC-04:00
+    - None                        → UTC fallback: 6:00 PM, UTC+00:00
+    - invalid IANA name           → UTC fallback: same
     """
     from src.user_time import current_datetime_context_message_for_tz
 

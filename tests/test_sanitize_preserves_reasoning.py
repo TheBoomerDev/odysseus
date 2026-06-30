@@ -6,14 +6,23 @@ tool calling when thinking mode is enabled.
 
 See: https://github.com/pewdiepie-archdaemon/odysseus/issues/3118
 """
+
 import sys
 from unittest.mock import MagicMock
 
 # Mock heavy dependencies before importing.
 for mod in [
-    'sqlalchemy', 'sqlalchemy.orm', 'sqlalchemy.ext', 'sqlalchemy.ext.declarative',
-    'sqlalchemy.ext.hybrid', 'sqlalchemy.sql', 'sqlalchemy.sql.expression',
-    'src.database', 'src.agent_tools', 'core.models', 'core.database',
+    "sqlalchemy",
+    "sqlalchemy.orm",
+    "sqlalchemy.ext",
+    "sqlalchemy.ext.declarative",
+    "sqlalchemy.ext.hybrid",
+    "sqlalchemy.sql",
+    "sqlalchemy.sql.expression",
+    "src.database",
+    "src.agent_tools",
+    "core.models",
+    "core.database",
 ]:
     if mod not in sys.modules:
         sys.modules[mod] = MagicMock()
@@ -35,8 +44,11 @@ def test_sanitize_preserves_reasoning_content_on_assistant_tool_call():
             "content": None,
             "reasoning_content": "Let me think about which tool to use...",
             "tool_calls": [
-                {"id": "call_1", "type": "function",
-                 "function": {"name": "web_search", "arguments": '{"q":"test"}'}},
+                {
+                    "id": "call_1",
+                    "type": "function",
+                    "function": {"name": "web_search", "arguments": '{"q":"test"}'},
+                },
             ],
         },
         {
@@ -49,7 +61,9 @@ def test_sanitize_preserves_reasoning_content_on_assistant_tool_call():
     out = _sanitize_llm_messages(messages)
     assistant = next(m for m in out if m["role"] == "assistant")
 
-    assert assistant.get("reasoning_content") == "Let me think about which tool to use...", (
+    assert (
+        assistant.get("reasoning_content") == "Let me think about which tool to use..."
+    ), (
         "reasoning_content was stripped during sanitization; Moonshot/Kimi API will "
         "reject this as HTTP 400 in multi-turn tool calling"
     )
@@ -69,7 +83,10 @@ def test_sanitize_preserves_reasoning_content_on_plain_assistant():
 
     out = _sanitize_llm_messages(messages)
     assert len(out) == 1
-    assert out[0]["reasoning_content"] == "Internal reasoning that should be kept for the next turn."
+    assert (
+        out[0]["reasoning_content"]
+        == "Internal reasoning that should be kept for the next turn."
+    )
 
 
 def test_sanitize_strips_unknown_fields_but_keeps_reasoning_content():

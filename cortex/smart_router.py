@@ -11,10 +11,9 @@ a recommendation engine for provider/model selection.
 from __future__ import annotations
 
 import logging
-import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +22,12 @@ logger = logging.getLogger(__name__)
 # Cost table
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ModelCostEntry:
     model: str
     provider: str
-    input_per_1m: float   # USD per 1M input tokens
+    input_per_1m: float  # USD per 1M input tokens
     output_per_1m: float  # USD per 1M output tokens
 
 
@@ -35,35 +35,30 @@ MODEL_COST_TABLE: Dict[str, ModelCostEntry] = {
     # DeepSeek
     "deepseek-chat": ModelCostEntry("deepseek-chat", "deepseek", 0.14, 0.28),
     "deepseek-reasoner": ModelCostEntry("deepseek-reasoner", "deepseek", 0.55, 2.19),
-
     # Anthropic
     "claude-sonnet-4": ModelCostEntry("claude-sonnet-4", "anthropic", 3.00, 15.00),
     "claude-opus-4": ModelCostEntry("claude-opus-4", "anthropic", 15.00, 75.00),
-    "claude-sonnet-4-20250514": ModelCostEntry("claude-sonnet-4-20250514", "anthropic", 3.00, 15.00),
+    "claude-sonnet-4-20250514": ModelCostEntry(
+        "claude-sonnet-4-20250514", "anthropic", 3.00, 15.00
+    ),
     "claude-haiku-3.5": ModelCostEntry("claude-haiku-3.5", "anthropic", 0.80, 4.00),
-
     # OpenAI
     "gpt-4o": ModelCostEntry("gpt-4o", "openai", 2.50, 10.00),
     "gpt-4o-mini": ModelCostEntry("gpt-4o-mini", "openai", 0.15, 0.60),
     "gpt-4-turbo": ModelCostEntry("gpt-4-turbo", "openai", 10.00, 30.00),
     "o1": ModelCostEntry("o1", "openai", 15.00, 60.00),
     "o1-mini": ModelCostEntry("o1-mini", "openai", 3.00, 12.00),
-
     # Google
     "gemini-2.0-flash": ModelCostEntry("gemini-2.0-flash", "google", 0.10, 0.40),
     "gemini-2.0-pro": ModelCostEntry("gemini-2.0-pro", "google", 2.00, 8.00),
     "gemini-1.5-flash": ModelCostEntry("gemini-1.5-flash", "google", 0.075, 0.30),
-
     # OpenRouter
     "openrouter/auto": ModelCostEntry("openrouter/auto", "openrouter", 1.00, 3.00),
-
     # Ollama (local — free)
     "ollama/llama3": ModelCostEntry("ollama/llama3", "ollama", 0.0, 0.0),
     "ollama/mistral": ModelCostEntry("ollama/mistral", "ollama", 0.0, 0.0),
-
     # Grok
     "grok-2": ModelCostEntry("grok-2", "grok", 2.00, 10.00),
-
     # xAI
     "grok-3": ModelCostEntry("grok-3", "xai", 3.00, 15.00),
 }
@@ -74,15 +69,15 @@ def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
     entry = MODEL_COST_TABLE.get(model)
     if not entry:
         return 0.0
-    return (
-        (input_tokens / 1_000_000) * entry.input_per_1m +
-        (output_tokens / 1_000_000) * entry.output_per_1m
-    )
+    return (input_tokens / 1_000_000) * entry.input_per_1m + (
+        output_tokens / 1_000_000
+    ) * entry.output_per_1m
 
 
 # ---------------------------------------------------------------------------
 # Task categories
 # ---------------------------------------------------------------------------
+
 
 class TaskCategory(str, Enum):
     ANALYSIS = "analysis"
@@ -118,6 +113,7 @@ class RoutingPriority(str, Enum):
 # ---------------------------------------------------------------------------
 # Response types
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SmartRouterResponse:
@@ -157,7 +153,6 @@ TASK_MODEL_MAP: Dict[TaskCategory, List[ModelEntry]] = {
     TaskCategory.RESEARCH: [
         ModelEntry("deepseek-chat", "Investigación básica de bajo costo"),
     ],
-
     # Expensive: code generation & review
     TaskCategory.CODE_GENERATION: [
         ModelEntry("claude-sonnet-4", "Mejor para generación de código"),
@@ -168,17 +163,14 @@ TASK_MODEL_MAP: Dict[TaskCategory, List[ModelEntry]] = {
         ModelEntry("claude-sonnet-4", "Calidad superior para revisión"),
         ModelEntry("gpt-4o", "Fallback: buena capacidad de revisión"),
     ],
-
     # Mid-range: writing
     TaskCategory.WRITING: [
         ModelEntry("gpt-4o-mini", "Bueno para escritura, costo moderado"),
     ],
-
     # Cheap: testing
     TaskCategory.TESTING: [
         ModelEntry("deepseek-chat", "Suficiente para generar tests"),
     ],
-
     # Cheap default: chat
     TaskCategory.CHAT: [
         ModelEntry("deepseek-chat", "Chat general de bajo costo"),
@@ -191,23 +183,84 @@ TASK_MODEL_MAP: Dict[TaskCategory, List[ModelEntry]] = {
 # ---------------------------------------------------------------------------
 
 _CATEGORY_KEYWORDS: Dict[TaskCategory, List[str]] = {
-    TaskCategory.ANALYSIS: ["analy", "assess", "evaluat", "investig", "diagnos",
-                            "compar", "metrics", "perform", "impact"],
-    TaskCategory.PLANNING: ["plan", "roadmap", "timeline", "schedule", "milestone",
-                            "strategy", "sprint", "backlog"],
-    TaskCategory.CODE_GENERATION: ["implement", "write code", "create function",
-                                    "develop", "build", "program", "feature",
-                                    "add endpoint", "script"],
-    TaskCategory.CODE_REVIEW: ["review", "audit code", "check", "inspect",
-                                "refactor", "quality"],
-    TaskCategory.RESEARCH: ["research", "find", "search", "look up", "investigate",
-                            "learn about", "what is", "how does"],
-    TaskCategory.WRITING: ["write", "document", "draft", "compose", "edit",
-                           "readme", "doc", "blog", "post"],
-    TaskCategory.TESTING: ["test", "unit test", "integration test", "e2e",
-                           "coverage", "assert", "mock"],
-    TaskCategory.DECOMPOSITION: ["decompos", "break down", "split", "divide",
-                                  "subtask", "task list"],
+    TaskCategory.ANALYSIS: [
+        "analy",
+        "assess",
+        "evaluat",
+        "investig",
+        "diagnos",
+        "compar",
+        "metrics",
+        "perform",
+        "impact",
+    ],
+    TaskCategory.PLANNING: [
+        "plan",
+        "roadmap",
+        "timeline",
+        "schedule",
+        "milestone",
+        "strategy",
+        "sprint",
+        "backlog",
+    ],
+    TaskCategory.CODE_GENERATION: [
+        "implement",
+        "write code",
+        "create function",
+        "develop",
+        "build",
+        "program",
+        "feature",
+        "add endpoint",
+        "script",
+    ],
+    TaskCategory.CODE_REVIEW: [
+        "review",
+        "audit code",
+        "check",
+        "inspect",
+        "refactor",
+        "quality",
+    ],
+    TaskCategory.RESEARCH: [
+        "research",
+        "find",
+        "search",
+        "look up",
+        "investigate",
+        "learn about",
+        "what is",
+        "how does",
+    ],
+    TaskCategory.WRITING: [
+        "write",
+        "document",
+        "draft",
+        "compose",
+        "edit",
+        "readme",
+        "doc",
+        "blog",
+        "post",
+    ],
+    TaskCategory.TESTING: [
+        "test",
+        "unit test",
+        "integration test",
+        "e2e",
+        "coverage",
+        "assert",
+        "mock",
+    ],
+    TaskCategory.DECOMPOSITION: [
+        "decompos",
+        "break down",
+        "split",
+        "divide",
+        "subtask",
+        "task list",
+    ],
     TaskCategory.CHAT: ["chat", "talk", "hello", "hi", "help", "what can you"],
 }
 
@@ -230,6 +283,7 @@ def detect_category(prompt: str) -> TaskCategory:
 # ---------------------------------------------------------------------------
 # SmartRouter
 # ---------------------------------------------------------------------------
+
 
 class SmartRouter:
     """Task-category-aware model selection with cost optimization.
@@ -294,8 +348,7 @@ class SmartRouter:
         cost = estimate_cost(model, prompt_tokens, estimated_output)
 
         fallbacks = [
-            e.model for e in TASK_MODEL_MAP.get(category, [])
-            if e.model != model
+            e.model for e in TASK_MODEL_MAP.get(category, []) if e.model != model
         ]
 
         return {
@@ -313,13 +366,15 @@ class SmartRouter:
         """List all task categories with their recommended models."""
         result = []
         for cat, models in TASK_MODEL_MAP.items():
-            result.append({
-                "category": cat.value,
-                "label": CATEGORY_LABELS.get(cat, "Unknown"),
-                "primary_model": models[0].model if models else None,
-                "fallback_models": [m.model for m in models[1:]],
-                "cost_tier": self._cost_tier(cat),
-            })
+            result.append(
+                {
+                    "category": cat.value,
+                    "label": CATEGORY_LABELS.get(cat, "Unknown"),
+                    "primary_model": models[0].model if models else None,
+                    "fallback_models": [m.model for m in models[1:]],
+                    "cost_tier": self._cost_tier(cat),
+                }
+            )
         return result
 
     def _cost_tier(self, category: TaskCategory) -> str:

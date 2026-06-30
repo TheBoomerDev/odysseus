@@ -6,6 +6,7 @@ double space after "Re:" on every non-ASCII subject, a spurious space in
 "Name <addr>" senders, and violated RFC 2047 6.2 which requires whitespace
 between two adjacent encoded-words to be dropped.
 """
+
 import json
 import sqlite3
 
@@ -51,8 +52,26 @@ def _init_accounts_db(path):
                 'smtp.example.com', 465, 'ssl', ?, '', ?, ?)
         """,
         [
-            ("acct-alice", "alice", "Alice Mail", 1, "alice@example.com", "alice@example.com", "alice@example.com", "2026-01-01"),
-            ("acct-bob", "bob", "Bob Mail", 1, "bob@example.com", "bob@example.com", "bob@example.com", "2026-01-02"),
+            (
+                "acct-alice",
+                "alice",
+                "Alice Mail",
+                1,
+                "alice@example.com",
+                "alice@example.com",
+                "alice@example.com",
+                "2026-01-01",
+            ),
+            (
+                "acct-bob",
+                "bob",
+                "Bob Mail",
+                1,
+                "bob@example.com",
+                "bob@example.com",
+                "bob@example.com",
+                "2026-01-02",
+            ),
         ],
     )
     conn.commit()
@@ -95,7 +114,9 @@ async def test_mcp_email_accounts_are_filtered_by_hidden_owner(tmp_path, monkeyp
 
 
 @pytest.mark.asyncio
-async def test_mcp_email_requires_owner_when_multiple_account_owners_exist(tmp_path, monkeypatch):
+async def test_mcp_email_requires_owner_when_multiple_account_owners_exist(
+    tmp_path, monkeypatch
+):
     db_path = tmp_path / "app.db"
     _init_accounts_db(db_path)
     monkeypatch.setattr(es, "APP_DB", str(db_path))
@@ -106,7 +127,9 @@ async def test_mcp_email_requires_owner_when_multiple_account_owners_exist(tmp_p
     assert "requires an authenticated owner" in out[0].text
 
 
-def test_mcp_email_scoped_owner_without_visible_account_skips_legacy_fallback(tmp_path, monkeypatch):
+def test_mcp_email_scoped_owner_without_visible_account_skips_legacy_fallback(
+    tmp_path, monkeypatch
+):
     db_path = tmp_path / "app.db"
     settings_path = tmp_path / "settings.json"
     _init_accounts_db(db_path)

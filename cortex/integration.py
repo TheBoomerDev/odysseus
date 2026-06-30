@@ -7,19 +7,20 @@ Conecta:
 - Heartbeat a WebSocket (notificaciones de stale goals)
 - SDD al LLM real de Odysseus
 """
+
 from __future__ import annotations
 
 import json
 import logging
-import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
 # -------------------------------------------------------------------
 # 1. SmartRouter → Chat
 # -------------------------------------------------------------------
+
 
 def route_chat_message(
     message: str,
@@ -95,6 +96,7 @@ def route_model_for_session(
 # 2. Goals → ScheduledTask
 # -------------------------------------------------------------------
 
+
 def goal_to_scheduled_tasks(
     goal_id: str,
     goal_text: str,
@@ -132,7 +134,7 @@ def goal_to_scheduled_tasks(
             f"\nExecute this task and report the results."
         )
 
-        scheduled_task = ScheduledTask(
+        scheduled_task = ScheduledTask(  # type: ignore[call-arg]
             id=task_id,
             owner=owner,
             name=f"[Goal] {task.description[:60]}",
@@ -144,17 +146,21 @@ def goal_to_scheduled_tasks(
             output_target="session",
         )
         db_session.add(scheduled_task)
-        created_tasks.append({
-            "task_id": task_id,
-            "description": task.description,
-            "agent": task.agent,
-            "depends_on": task.depends_on,
-        })
+        created_tasks.append(
+            {
+                "task_id": task_id,
+                "description": task.description,
+                "agent": task.agent,
+                "depends_on": task.depends_on,
+            }
+        )
 
     db_session.commit()
     logger.info(
         "Created %d ScheduledTasks for goal '%s' (%s)",
-        len(created_tasks), goal_id, goal_text[:60],
+        len(created_tasks),
+        goal_id,
+        goal_text[:60],
     )
     return created_tasks
 
@@ -218,6 +224,7 @@ def decompose_and_schedule(
 # 3. SDD → Odysseus LLM
 # -------------------------------------------------------------------
 
+
 def generate_sdd_with_odysseus_llm(
     goal_id: str,
     goal_text: str,
@@ -268,15 +275,15 @@ async def notify_heartbeat_event(event_type: str, data: Dict[str, Any]) -> None:
         event_type: Tipo de evento (stale_goal, health_change, tick)
         data: Datos del evento
     """
-    import asyncio
-    import json
 
-    message = json.dumps({
-        "type": "heartbeat",
-        "event": event_type,
-        "data": data,
-        "timestamp": datetime.utcnow().isoformat(),
-    })
+    message = json.dumps(
+        {
+            "type": "heartbeat",
+            "event": event_type,
+            "data": data,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    )
 
     dead_clients = []
     for sid, ws in _ws_clients.items():
@@ -301,17 +308,23 @@ async def heartbeat_health_check() -> Dict[str, Any]:
     result = await hb.tick()
 
     if result.stale_goals_found > 0:
-        await notify_heartbeat_event("stale_goal", {
-            "count": result.stale_goals_found,
-            "goals_marked_failed": result.goals_marked_failed,
-        })
+        await notify_heartbeat_event(
+            "stale_goal",
+            {
+                "count": result.stale_goals_found,
+                "goals_marked_failed": result.goals_marked_failed,
+            },
+        )
 
     if not result.db_connected or not result.redis_connected:
-        await notify_heartbeat_event("health_change", {
-            "db_connected": result.db_connected,
-            "redis_connected": result.redis_connected,
-            "errors": result.errors,
-        })
+        await notify_heartbeat_event(
+            "health_change",
+            {
+                "db_connected": result.db_connected,
+                "redis_connected": result.redis_connected,
+                "errors": result.errors,
+            },
+        )
 
     return {
         "db_connected": result.db_connected,

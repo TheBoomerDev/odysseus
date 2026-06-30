@@ -5,6 +5,7 @@ _extract_headings counted it, so _apply_heading_ids (which zips TOC headings
 against rendered <h2>/<h3> by position) gave later sections the wrong anchor
 id and the trailing TOC link went dead.
 """
+
 import pytest
 
 pytest.importorskip("bs4")

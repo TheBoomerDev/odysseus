@@ -21,15 +21,24 @@ def _flags(meta_b: bytes) -> str:
 # Captured shape of a real Gmail response to
 # UID FETCH a,b (UID FLAGS RFC822.HEADER RFC822.SIZE):
 GMAIL_RESPONSE = [
-    (b"10779 (UID 18723 RFC822.SIZE 54308 RFC822.HEADER {24}", b"Subject: read one\r\n\r\n"),
+    (
+        b"10779 (UID 18723 RFC822.SIZE 54308 RFC822.HEADER {24}",
+        b"Subject: read one\r\n\r\n",
+    ),
     rb" FLAGS (\Seen))",
-    (b"10780 (UID 18724 RFC822.SIZE 124310 RFC822.HEADER {26}", b"Subject: unread one\r\n\r\n"),
+    (
+        b"10780 (UID 18724 RFC822.SIZE 124310 RFC822.HEADER {26}",
+        b"Subject: unread one\r\n\r\n",
+    ),
     rb" FLAGS ())",
 ]
 
 # Dovecot puts FLAGS before the literal and terminates with a bare b')'.
 DOVECOT_RESPONSE = [
-    (rb"1 (UID 5 FLAGS (\Seen) RFC822.SIZE 100 RFC822.HEADER {18}", b"Subject: hi\r\n\r\n"),
+    (
+        rb"1 (UID 5 FLAGS (\Seen) RFC822.SIZE 100 RFC822.HEADER {18}",
+        b"Subject: hi\r\n\r\n",
+    ),
     b")",
     (b"2 (UID 6 FLAGS () RFC822.SIZE 90 RFC822.HEADER {19}", b"Subject: new\r\n\r\n"),
     b")",

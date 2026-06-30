@@ -6,6 +6,7 @@ without unfolding, so a folded EMAIL/FN line lost its continuation (a long
 address like ...@exampledomain<fold>.com was stored as ...@exampledomain),
 silently corrupting the contact.
 """
+
 from routes.contacts_routes import _parse_vcards
 
 

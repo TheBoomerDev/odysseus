@@ -17,6 +17,7 @@ Examples:
 This script imports no production code and changes no test behavior. It only
 constructs and (optionally) executes a pytest invocation.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -72,9 +73,7 @@ def discover_sub_areas(tests_dir: Path = TESTS_DIR) -> frozenset[str]:
     paths += list(tests_dir.rglob("*_test.py"))
     markers = discover_markers(paths)
     return frozenset(
-        marker.removeprefix("sub_")
-        for marker in markers
-        if marker.startswith("sub_")
+        marker.removeprefix("sub_") for marker in markers if marker.startswith("sub_")
     )
 
 
@@ -136,11 +135,7 @@ class FocusSelection:
         only, not a selector, so it does not count as focus on its own.
         """
         return bool(
-            self.area
-            or self.sub_area
-            or self.keyword
-            or self.last_failed
-            or self.fast
+            self.area or self.sub_area or self.keyword or self.last_failed or self.fast
         )
 
 

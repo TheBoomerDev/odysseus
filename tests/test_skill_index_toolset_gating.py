@@ -13,7 +13,12 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 # ── module-load stubbing (matches other tests in this repo) ──────────
-for _mod in ("sqlalchemy", "sqlalchemy.orm", "sqlalchemy.ext", "sqlalchemy.ext.declarative"):
+for _mod in (
+    "sqlalchemy",
+    "sqlalchemy.orm",
+    "sqlalchemy.ext",
+    "sqlalchemy.ext.declarative",
+):
     if _mod not in sys.modules:
         try:
             __import__(_mod)
@@ -23,8 +28,9 @@ for _mod in ("sqlalchemy", "sqlalchemy.orm", "sqlalchemy.ext", "sqlalchemy.ext.d
 from services.memory.skills import SkillsManager  # noqa: E402
 
 
-def _write_skill_md(skills_root: Path, name: str, *, requires: str = "",
-                    fallback: str = "") -> Path:
+def _write_skill_md(
+    skills_root: Path, name: str, *, requires: str = "", fallback: str = ""
+) -> Path:
     skill_dir = skills_root / "general" / name
     skill_dir.mkdir(parents=True, exist_ok=True)
     fm = [
@@ -82,7 +88,8 @@ def test_requires_toolsets_gates_on_explicit_list(tmp_path):
     assert "notes-lookup" not in _names(sm.index_for(active_toolsets=[]))
     # All required tools active → visible.
     assert "notes-lookup" in _names(
-        sm.index_for(active_toolsets=["grep", "read_file", "ls"]))
+        sm.index_for(active_toolsets=["grep", "read_file", "ls"])
+    )
 
 
 def test_fallback_for_toolsets_unaffected_by_none(tmp_path):
@@ -94,5 +101,4 @@ def test_fallback_for_toolsets_unaffected_by_none(tmp_path):
     # known to be active.
     assert "web-fallback" in _names(sm.index_for(active_toolsets=None))
     assert "web-fallback" in _names(sm.index_for(active_toolsets=[]))
-    assert "web-fallback" not in _names(
-        sm.index_for(active_toolsets=["web_search"]))
+    assert "web-fallback" not in _names(sm.index_for(active_toolsets=["web_search"]))

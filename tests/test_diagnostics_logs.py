@@ -19,15 +19,21 @@ def _client_with_admin_gate(monkeypatch, gate, tmp_path=None):
         monkeypatch.setattr(diag, "DATA_DIR", str(tmp_path))
 
     app = FastAPI()
-    app.include_router(diag.setup_diagnostics_routes(
-        rag_manager=None, rag_available=False, research_handler=None,
-        memory_vector=None))
+    app.include_router(
+        diag.setup_diagnostics_routes(
+            rag_manager=None,
+            rag_available=False,
+            research_handler=None,
+            memory_vector=None,
+        )
+    )
     return TestClient(app, raise_server_exceptions=False)
 
 
 def test_logs_unauthenticated_rejected(monkeypatch):
     def gate(_request: Request):
         raise HTTPException(401, "Not authenticated")
+
     client = _client_with_admin_gate(monkeypatch, gate)
     r = client.get("/api/diagnostics/logs")
     assert r.status_code == 401
@@ -36,6 +42,7 @@ def test_logs_unauthenticated_rejected(monkeypatch):
 def test_logs_non_admin_forbidden(monkeypatch):
     def gate(_request: Request):
         raise HTTPException(403, "Admin only")
+
     client = _client_with_admin_gate(monkeypatch, gate)
     r = client.get("/api/diagnostics/logs")
     assert r.status_code == 403
@@ -44,6 +51,7 @@ def test_logs_non_admin_forbidden(monkeypatch):
 def test_logs_missing_file(monkeypatch, tmp_path):
     def gate(_request: Request):
         return None
+
     client = _client_with_admin_gate(monkeypatch, gate, tmp_path)
     r = client.get("/api/diagnostics/logs")
     assert r.status_code == 200
@@ -64,6 +72,7 @@ def test_logs_tailing_and_clamping(monkeypatch, tmp_path):
 
     def gate(_request: Request):
         return None
+
     client = _client_with_admin_gate(monkeypatch, gate, tmp_path)
 
     # 1. Default limit (200)
@@ -106,5 +115,5 @@ def test_logs_tailing_and_clamping(monkeypatch, tmp_path):
         "Log line 1497",
         "Log line 1498",
         "Log line 1499",
-        "Log line 1500"
+        "Log line 1500",
     ]

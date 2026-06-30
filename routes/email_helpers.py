@@ -72,10 +72,15 @@ def make_oauth_state(account_id: str, owner: str) -> str:
     so the callback can validate that the flow was initiated by an
     authenticated, owning user (CSRF / state-forgery protection).
     """
-    import hmac as _hmac, hashlib as _hl, secrets as _sec
+    import hmac as _hmac
+    import hashlib as _hl
+    import secrets as _sec
     from src.secret_storage import _load_or_create_key
+
     nonce = _sec.token_hex(16)
-    payload = json.dumps({"a": account_id, "o": owner, "n": nonce}, separators=(",", ":"))
+    payload = json.dumps(
+        {"a": account_id, "o": owner, "n": nonce}, separators=(",", ":")
+    )
     sig = _hmac.new(_load_or_create_key(), payload.encode(), _hl.sha256).hexdigest()
     return base64.urlsafe_b64encode(f"{payload}|{sig}".encode()).decode()
 
@@ -86,12 +91,16 @@ def verify_oauth_state(state: str) -> dict | None:
     Returns the decoded payload dict ({"a", "o", "n"}) on success, or None if
     the token is malformed, tampered, or signed with a different key.
     """
-    import hmac as _hmac, hashlib as _hl
+    import hmac as _hmac
+    import hashlib as _hl
     from src.secret_storage import _load_or_create_key
+
     try:
         decoded = base64.urlsafe_b64decode(state.encode()).decode()
         payload, sig = decoded.rsplit("|", 1)
-        expected = _hmac.new(_load_or_create_key(), payload.encode(), _hl.sha256).hexdigest()
+        expected = _hmac.new(
+            _load_or_create_key(), payload.encode(), _hl.sha256
+        ).hexdigest()
         if not _hmac.compare_digest(sig, expected):
             return None
         return json.loads(payload)
@@ -104,6 +113,7 @@ def _refresh_google_token(account_id: str) -> str | None:
     import httpx
     from core.database import SessionLocal as _SL, EmailAccount as _EA
     from src.secret_storage import encrypt as _enc, decrypt as _dec
+
     client_id = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
     client_secret = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", "")
     if not client_id or not client_secret:
@@ -116,12 +126,16 @@ def _refresh_google_token(account_id: str) -> str | None:
         refresh_token = _dec(row.oauth_refresh_token or "")
         if not refresh_token:
             return None
-        resp = httpx.post("https://oauth2.googleapis.com/token", data={
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "refresh_token": refresh_token,
-            "grant_type": "refresh_token",
-        }, timeout=10)
+        resp = httpx.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "refresh_token": refresh_token,
+                "grant_type": "refresh_token",
+            },
+            timeout=10,
+        )
         resp.raise_for_status()
         data = resp.json()
         access_token = data["access_token"]
@@ -139,6 +153,7 @@ def _refresh_google_token(account_id: str) -> str | None:
 def _get_valid_google_token(account_id: str, cfg: dict) -> str | None:
     """Return a valid Google access token, refreshing if expired or missing."""
     from src.secret_storage import decrypt as _dec
+
     access_token = _dec(cfg.get("oauth_access_token") or "")
     expiry_str = cfg.get("oauth_token_expiry") or ""
     if access_token and expiry_str:
@@ -160,7 +175,13 @@ def _smtp_security_mode(cfg: dict) -> str:
     return "ssl"
 
 
-def _send_smtp_message(cfg: dict, from_addr: str, recipients: list[str], message: str | bytes, timeout: int = 30) -> None:
+def _send_smtp_message(
+    cfg: dict,
+    from_addr: str,
+    recipients: list[str],
+    message: str | bytes,
+    timeout: int = 30,
+) -> None:
     """Send through SMTP using the configured transport security mode."""
     host = cfg["smtp_host"]
     port = int(cfg.get("smtp_port") or 465)
@@ -171,9 +192,15 @@ def _send_smtp_message(cfg: dict, from_addr: str, recipients: list[str], message
         if cfg.get("oauth_provider") == "google":
             token = _get_valid_google_token(cfg.get("account_id"), cfg)
             if not token:
-                raise RuntimeError("Google OAuth token unavailable — reconnect the account")
+                raise RuntimeError(
+                    "Google OAuth token unavailable — reconnect the account"
+                )
             smtp.ehlo()
-            smtp.auth("XOAUTH2", lambda challenge=None: _xoauth2_raw(user, token), initial_response_ok=True)
+            smtp.auth(
+                "XOAUTH2",
+                lambda challenge=None: _xoauth2_raw(user, token),
+                initial_response_ok=True,
+            )
         elif user and password:
             smtp.login(user, password)
 
@@ -236,12 +263,14 @@ def _strip_think(text: str) -> str:
     if not text:
         return ""
     from src.text_helpers import strip_think as _central, _THINK_TAG_RE
+
     # Single linear tag check; the old closed/open `.search()` calls could ReDoS.
     had_think = bool(_THINK_TAG_RE.search(text))
     return _central(text, prose=had_think, prompt_echo=True)
 
 
 import re as _re_reply
+
 # Accept REPLY / SUMMARY / OUTPUT as the opening fence so the same extractor
 # serves replies and summaries (any fenced final-output block).
 _REPLY_OPEN_RE = _re_reply.compile(r"<<<\s*(?:REPLY|SUMMARY|OUTPUT)\s*>>+", _re_reply.I)
@@ -266,9 +295,9 @@ def _extract_reply(text: str) -> str:
     t = text
     m = _REPLY_OPEN_RE.search(t)
     if m:
-        rest = t[m.end():]
+        rest = t[m.end() :]
         c = _REPLY_CLOSE_RE.search(rest)
-        t = rest[:c.start()] if c else rest
+        t = rest[: c.start()] if c else rest
     # Drop any stray/duplicate marker tokens, then strip think markup.
     t = _REPLY_OPEN_RE.sub("", t)
     t = _REPLY_CLOSE_RE.sub("", t)
@@ -280,10 +309,7 @@ def _apply_email_style_mechanics(text: str) -> str:
     if not text:
         return ""
     return (
-        text.replace("—", "--")
-        .replace("–", "--")
-        .replace("’", "'")
-        .replace("‘", "'")
+        text.replace("—", "--").replace("–", "--").replace("’", "'").replace("‘", "'")
     )
 
 
@@ -344,6 +370,7 @@ def _assert_owns_account(account_id: str, owner: str) -> None:
         return
     try:
         from core.database import SessionLocal as _SL, EmailAccount as _EA
+
         db = _SL()
         try:
             row = db.query(_EA).filter(_EA.id == account_id).first()
@@ -361,6 +388,7 @@ def _assert_owns_account(account_id: str, owner: str) -> None:
         # through. 503 tells the caller to retry; logs preserve detail.
         logger.error(f"Account-owner check failed: {e}")
         raise HTTPException(503, "Account check failed")
+
 
 def _q(name: str) -> str:
     """Quote an IMAP mailbox name. Defensive: escapes `\\` and `"` and wraps
@@ -408,7 +436,13 @@ def _cleanup_compose_uploads(tokens) -> None:
             pass
 
 
-from src.constants import DATA_DIR as _DATA_DIR, MAIL_ATTACHMENTS_DIR, SETTINGS_FILE as _SETTINGS_FILE, SCHEDULED_EMAILS_DB
+from src.constants import (
+    DATA_DIR as _DATA_DIR,
+    MAIL_ATTACHMENTS_DIR,
+    SETTINGS_FILE as _SETTINGS_FILE,
+    SCHEDULED_EMAILS_DB,
+)
+
 DATA_DIR = Path(_DATA_DIR)
 SETTINGS_FILE = Path(_SETTINGS_FILE)
 # Override at deploy time via ODYSSEUS_MAIL_ATTACHMENTS_DIR. Defaults to a
@@ -437,7 +471,9 @@ def _email_cache_owner_clause(owner: str = "") -> tuple[str, tuple[str, ...]]:
     return "(owner = '' OR owner IS NULL)", ()
 
 
-def _ensure_owner_scoped_email_cache_table(conn, table: str, create_sql: str, columns: list[str]):
+def _ensure_owner_scoped_email_cache_table(
+    conn, table: str, create_sql: str, columns: list[str]
+):
     """Rebuild legacy Message-ID-only cache tables with owner in the PK."""
     conn.execute(create_sql)
     try:
@@ -449,7 +485,9 @@ def _ensure_owner_scoped_email_cache_table(conn, table: str, create_sql: str, co
 
         conn.execute(f"ALTER TABLE {table} RENAME TO {table}__old")
         conn.execute(create_sql)
-        old_cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table}__old)").fetchall()]
+        old_cols = [
+            r[1] for r in conn.execute(f"PRAGMA table_info({table}__old)").fetchall()
+        ]
         copy_cols = [c for c in columns if c != "owner" and c in old_cols]
         source_owner = "COALESCE(owner, '')" if "owner" in old_cols else "''"
         target_cols = ["owner", *copy_cols]
@@ -461,6 +499,7 @@ def _ensure_owner_scoped_email_cache_table(conn, table: str, create_sql: str, co
         conn.execute(f"DROP TABLE {table}__old")
     except Exception as _mig_e:
         import logging as _lg
+
         _lg.getLogger(__name__).warning(f"{table} owner-migration skipped: {_mig_e}")
 
 
@@ -488,9 +527,15 @@ def _ensure_sender_signatures_table(conn):
 
         conn.execute("ALTER TABLE sender_signatures RENAME TO sender_signatures__old")
         conn.execute(create_sql)
-        old_cols = [r[1] for r in conn.execute("PRAGMA table_info(sender_signatures__old)").fetchall()]
+        old_cols = [
+            r[1]
+            for r in conn.execute(
+                "PRAGMA table_info(sender_signatures__old)"
+            ).fetchall()
+        ]
         copy_cols = [
-            c for c in (
+            c
+            for c in (
                 "from_address",
                 "signature_text",
                 "sample_count",
@@ -510,7 +555,10 @@ def _ensure_sender_signatures_table(conn):
         conn.execute("DROP TABLE sender_signatures__old")
     except Exception as _mig_e:
         import logging as _lg
-        _lg.getLogger(__name__).warning(f"sender_signatures owner-migration skipped: {_mig_e}")
+
+        _lg.getLogger(__name__).warning(
+            f"sender_signatures owner-migration skipped: {_mig_e}"
+        )
 
 
 def attachment_extract_dir(folder: str, uid: str) -> Path:
@@ -529,6 +577,7 @@ def attachment_extract_dir(folder: str, uid: str) -> Path:
 
 def _init_scheduled_db():
     import sqlite3
+
     conn = sqlite3.connect(SCHEDULED_DB)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS scheduled_emails (
@@ -550,7 +599,10 @@ def _init_scheduled_db():
     """)
     # Email summary cache. SECURITY: Message-IDs are global, so AI-derived
     # cache rows must be owner-scoped just like email_tags.
-    _ensure_owner_scoped_email_cache_table(conn, "email_summaries", """
+    _ensure_owner_scoped_email_cache_table(
+        conn,
+        "email_summaries",
+        """
         CREATE TABLE IF NOT EXISTS email_summaries (
             message_id TEXT,
             owner TEXT DEFAULT '',
@@ -563,9 +615,24 @@ def _init_scheduled_db():
             created_at TEXT NOT NULL,
             PRIMARY KEY (message_id, owner)
         )
-    """, ["message_id", "owner", "uid", "folder", "subject", "sender", "summary", "model_used", "created_at"])
+    """,
+        [
+            "message_id",
+            "owner",
+            "uid",
+            "folder",
+            "subject",
+            "sender",
+            "summary",
+            "model_used",
+            "created_at",
+        ],
+    )
     # Email AI reply cache (pre-generated draft replies)
-    _ensure_owner_scoped_email_cache_table(conn, "email_ai_replies", """
+    _ensure_owner_scoped_email_cache_table(
+        conn,
+        "email_ai_replies",
+        """
         CREATE TABLE IF NOT EXISTS email_ai_replies (
             message_id TEXT,
             owner TEXT DEFAULT '',
@@ -576,7 +643,9 @@ def _init_scheduled_db():
             created_at TEXT NOT NULL,
             PRIMARY KEY (message_id, owner)
         )
-    """, ["message_id", "owner", "uid", "folder", "reply", "model_used", "created_at"])
+    """,
+        ["message_id", "owner", "uid", "folder", "reply", "model_used", "created_at"],
+    )
     # Email tags / spam classification cache. SECURITY: keyed by
     # (message_id, owner) because Message-IDs are GLOBAL (a newsletter goes
     # to many users with the same Message-ID). Without owner-scoping, a
@@ -635,8 +704,12 @@ def _init_scheduled_db():
     except Exception as _mig_e:
         # Best-effort — log via the module logger if available
         import logging as _lg
+
         _lg.getLogger(__name__).warning(f"email_tags owner-migration skipped: {_mig_e}")
-    _ensure_owner_scoped_email_cache_table(conn, "email_calendar_extractions", """
+    _ensure_owner_scoped_email_cache_table(
+        conn,
+        "email_calendar_extractions",
+        """
         CREATE TABLE IF NOT EXISTS email_calendar_extractions (
             message_id TEXT,
             owner TEXT DEFAULT '',
@@ -645,8 +718,13 @@ def _init_scheduled_db():
             created_at TEXT NOT NULL,
             PRIMARY KEY (message_id, owner)
         )
-    """, ["message_id", "owner", "uid", "events_created", "created_at"])
-    _ensure_owner_scoped_email_cache_table(conn, "email_urgency_alerts", """
+    """,
+        ["message_id", "owner", "uid", "events_created", "created_at"],
+    )
+    _ensure_owner_scoped_email_cache_table(
+        conn,
+        "email_urgency_alerts",
+        """
         CREATE TABLE IF NOT EXISTS email_urgency_alerts (
             message_id TEXT,
             owner TEXT DEFAULT '',
@@ -660,7 +738,20 @@ def _init_scheduled_db():
             created_at TEXT NOT NULL,
             PRIMARY KEY (message_id, owner)
         )
-    """, ["message_id", "owner", "uid", "folder", "subject", "sender", "urgency", "reason", "alerted", "created_at"])
+    """,
+        [
+            "message_id",
+            "owner",
+            "uid",
+            "folder",
+            "subject",
+            "sender",
+            "urgency",
+            "reason",
+            "alerted",
+            "created_at",
+        ],
+    )
     conn.execute("""
         CREATE TABLE IF NOT EXISTS email_event_seen (
             owner TEXT NOT NULL,
@@ -687,14 +778,20 @@ def _init_scheduled_db():
     """)
     # Lazy migration: add account_id column to scheduled_emails if missing
     try:
-        cols = [r[1] for r in conn.execute("PRAGMA table_info(scheduled_emails)").fetchall()]
+        cols = [
+            r[1] for r in conn.execute("PRAGMA table_info(scheduled_emails)").fetchall()
+        ]
         if "account_id" not in cols:
             conn.execute("ALTER TABLE scheduled_emails ADD COLUMN account_id TEXT")
         if "odysseus_kind" not in cols:
             conn.execute("ALTER TABLE scheduled_emails ADD COLUMN odysseus_kind TEXT")
         if "owner" not in cols:
-            conn.execute("ALTER TABLE scheduled_emails ADD COLUMN owner TEXT DEFAULT ''")
-        conn.execute("CREATE INDEX IF NOT EXISTS ix_scheduled_emails_owner_status ON scheduled_emails(owner, status)")
+            conn.execute(
+                "ALTER TABLE scheduled_emails ADD COLUMN owner TEXT DEFAULT ''"
+            )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS ix_scheduled_emails_owner_status ON scheduled_emails(owner, status)"
+        )
         # Backfill owner on legacy rows from the owning email account so the
         # owner-scoped list/cancel routes surface pre-migration scheduled
         # sends to the right user (the poller already resolves these by
@@ -706,6 +803,7 @@ def _init_scheduled_db():
         if legacy_accounts:
             try:
                 from core.database import SessionLocal as _SL, EmailAccount as _EA
+
                 _db = _SL()
                 try:
                     for (acct_id,) in legacy_accounts:
@@ -726,7 +824,9 @@ def _init_scheduled_db():
     # Lazy migration: add turns_json to email_boundaries for server-side
     # thread parsing cache (talon-style precomputed reply chain).
     try:
-        cols = [r[1] for r in conn.execute("PRAGMA table_info(email_boundaries)").fetchall()]
+        cols = [
+            r[1] for r in conn.execute("PRAGMA table_info(email_boundaries)").fetchall()
+        ]
         if "turns_json" not in cols:
             conn.execute("ALTER TABLE email_boundaries ADD COLUMN turns_json TEXT")
     except Exception:
@@ -750,6 +850,7 @@ def _load_settings():
 
 def _save_settings(settings):
     from core.atomic_io import atomic_write_json
+
     atomic_write_json(str(SETTINGS_FILE), settings, indent=2)
 
 
@@ -779,6 +880,7 @@ def _get_email_config(account_id: str | None = None, owner: str = "") -> dict:
         if not owner:
             return query
         from sqlalchemy import and_, or_
+
         unowned = or_(_EA.owner == None, _EA.owner == "")  # noqa: E711
         same_mailbox = or_(_EA.imap_user == owner, _EA.from_address == owner)
         return query.filter(or_(_EA.owner == owner, and_(unowned, same_mailbox)))
@@ -789,7 +891,11 @@ def _get_email_config(account_id: str | None = None, owner: str = "") -> dict:
         db = _SL()
         try:
             if account_id:
-                row = db.query(_EA).filter(_EA.id == account_id, _EA.enabled == True).first()  # noqa: E712
+                row = (
+                    db.query(_EA)
+                    .filter(_EA.id == account_id, _EA.enabled == True)
+                    .first()
+                )  # noqa: E712
                 # If the resolved row belongs to a different owner, treat as
                 # not-found rather than silently serving it. This is a defense
                 # in depth — `require_owner` already calls `_assert_owns_account`
@@ -814,7 +920,12 @@ def _get_email_config(account_id: str | None = None, owner: str = "") -> dict:
                     "account_name": row.name,
                     "smtp_host": row.smtp_host or "",
                     "smtp_port": int(row.smtp_port or 465),
-                    "smtp_security": _smtp_security_mode({"smtp_security": getattr(row, "smtp_security", ""), "smtp_port": row.smtp_port}),
+                    "smtp_security": _smtp_security_mode(
+                        {
+                            "smtp_security": getattr(row, "smtp_security", ""),
+                            "smtp_port": row.smtp_port,
+                        }
+                    ),
                     "smtp_user": row.smtp_user or "",
                     "smtp_password": _decrypt(row.smtp_password or ""),
                     "imap_host": row.imap_host or "",
@@ -830,15 +941,21 @@ def _get_email_config(account_id: str | None = None, owner: str = "") -> dict:
                     "display_name": row.display_name or "",
                 }
                 is_oauth = bool(cfg.get("oauth_provider"))
-                if not is_oauth and not (cfg["smtp_host"] and cfg["smtp_user"] and cfg["smtp_password"]):
+                if not is_oauth and not (
+                    cfg["smtp_host"] and cfg["smtp_user"] and cfg["smtp_password"]
+                ):
                     logger.warning(f"SMTP not configured for account {row.name!r}")
-                if not is_oauth and not (cfg["imap_host"] and cfg["imap_user"] and cfg["imap_password"]):
+                if not is_oauth and not (
+                    cfg["imap_host"] and cfg["imap_user"] and cfg["imap_password"]
+                ):
                     logger.warning(f"IMAP not configured for account {row.name!r}")
                 return cfg
         finally:
             db.close()
     except Exception as e:
-        logger.debug(f"email_accounts lookup failed, falling back to settings.json: {e}")
+        logger.debug(
+            f"email_accounts lookup failed, falling back to settings.json: {e}"
+        )
 
     # Legacy fallback — flat keys in settings.json / env vars
     settings = _load_settings()
@@ -846,24 +963,42 @@ def _get_email_config(account_id: str | None = None, owner: str = "") -> dict:
         "account_id": resolved_id,
         "account_name": "legacy",
         "smtp_host": settings.get("smtp_host", os.environ.get("SMTP_HOST", "")),
-        "smtp_port": int(settings.get("smtp_port", os.environ.get("SMTP_PORT", "465")) or 465),
-        "smtp_security": _smtp_security_mode({
-            "smtp_security": settings.get("smtp_security", os.environ.get("SMTP_SECURITY", "")),
-            "smtp_port": settings.get("smtp_port", os.environ.get("SMTP_PORT", "465")),
-        }),
+        "smtp_port": int(
+            settings.get("smtp_port", os.environ.get("SMTP_PORT", "465")) or 465
+        ),
+        "smtp_security": _smtp_security_mode(
+            {
+                "smtp_security": settings.get(
+                    "smtp_security", os.environ.get("SMTP_SECURITY", "")
+                ),
+                "smtp_port": settings.get(
+                    "smtp_port", os.environ.get("SMTP_PORT", "465")
+                ),
+            }
+        ),
         "smtp_user": settings.get("smtp_user", os.environ.get("SMTP_USER", "")),
-        "smtp_password": settings.get("smtp_password", os.environ.get("SMTP_PASSWORD", "")),
+        "smtp_password": settings.get(
+            "smtp_password", os.environ.get("SMTP_PASSWORD", "")
+        ),
         "imap_host": settings.get("imap_host", os.environ.get("IMAP_HOST", "")),
-        "imap_port": int(settings.get("imap_port", os.environ.get("IMAP_PORT", "993")) or 993),
+        "imap_port": int(
+            settings.get("imap_port", os.environ.get("IMAP_PORT", "993")) or 993
+        ),
         "imap_user": settings.get("imap_user", os.environ.get("IMAP_USER", "")),
-        "imap_password": settings.get("imap_password", os.environ.get("IMAP_PASSWORD", "")),
+        "imap_password": settings.get(
+            "imap_password", os.environ.get("IMAP_PASSWORD", "")
+        ),
         "imap_starttls": settings.get("imap_starttls", True),
         "from_address": settings.get("email_from", os.environ.get("EMAIL_FROM", "")),
     }
     if not (cfg["smtp_host"] and cfg["smtp_user"] and cfg["smtp_password"]):
-        logger.warning("SMTP not configured — add an Email Account in Settings or set env vars")
+        logger.warning(
+            "SMTP not configured — add an Email Account in Settings or set env vars"
+        )
     if not (cfg["imap_host"] and cfg["imap_user"] and cfg["imap_password"]):
-        logger.warning("IMAP not configured — add an Email Account in Settings or set env vars")
+        logger.warning(
+            "IMAP not configured — add an Email Account in Settings or set env vars"
+        )
     return cfg
 
 
@@ -871,6 +1006,7 @@ def _list_email_accounts() -> list[dict]:
     """Return all enabled accounts in creation order. Used by background loops
     that iterate over every account (auto-summarize, urgency, etc.)."""
     from core.database import SessionLocal as _SL, EmailAccount as _EA
+
     try:
         db = _SL()
         try:
@@ -890,6 +1026,7 @@ def _list_email_accounts() -> list[dict]:
 
 # ── IMAP helpers ──
 
+
 def _coerce_imap_timeout_seconds(raw: str | None) -> int:
     try:
         value = int(raw or "30")
@@ -898,10 +1035,14 @@ def _coerce_imap_timeout_seconds(raw: str | None) -> int:
     return max(5, min(value, 300))
 
 
-_IMAP_TIMEOUT_SECONDS = _coerce_imap_timeout_seconds(os.environ.get("ODYSSEUS_IMAP_TIMEOUT_SECONDS"))
+_IMAP_TIMEOUT_SECONDS = _coerce_imap_timeout_seconds(
+    os.environ.get("ODYSSEUS_IMAP_TIMEOUT_SECONDS")
+)
 
 
-def _open_imap_connection(host: str, port: int, *, starttls: bool, timeout: int = _IMAP_TIMEOUT_SECONDS):
+def _open_imap_connection(
+    host: str, port: int, *, starttls: bool, timeout: int = _IMAP_TIMEOUT_SECONDS
+):
     """Open an IMAP connection using the configured security mode."""
     port = int(port or 993)
     if starttls:
@@ -930,8 +1071,10 @@ def _open_imap_connection(host: str, port: int, *, starttls: bool, timeout: int 
     imaplib._MAXLINE = 50_000_000
     return conn
 
-def _imap_connect(account_id: str | None = None, owner: str = "",
-                  timeout: int = _IMAP_TIMEOUT_SECONDS):
+
+def _imap_connect(
+    account_id: str | None = None, owner: str = "", timeout: int = _IMAP_TIMEOUT_SECONDS
+):
     # SECURITY: passing `owner` scopes the fallback config lookup so a brand
     # new user doesn't get connected against another user's default mailbox
     # when they have no account configured.
@@ -964,8 +1107,12 @@ def _imap_connect(account_id: str | None = None, owner: str = "",
         if cfg.get("oauth_provider") == "google":
             token = _get_valid_google_token(cfg.get("account_id"), cfg)
             if not token:
-                raise RuntimeError("Google OAuth token unavailable — reconnect the account in Settings → Integrations")
-            conn.authenticate("XOAUTH2", lambda x: _xoauth2_bytes(cfg["imap_user"], token))
+                raise RuntimeError(
+                    "Google OAuth token unavailable — reconnect the account in Settings → Integrations"
+                )
+            conn.authenticate(
+                "XOAUTH2", lambda x: _xoauth2_bytes(cfg["imap_user"], token)
+            )
         else:
             conn.login(cfg["imap_user"], cfg["imap_password"])
     except Exception:
@@ -1147,7 +1294,11 @@ def _detect_spam_folder(conn):
                 preferred = name
                 break
             low = name.lower()
-            if low in ("junk", "spam", "junk mail", "junk e-mail") or low.endswith("/junk") or low.endswith("/spam"):
+            if (
+                low in ("junk", "spam", "junk mail", "junk e-mail")
+                or low.endswith("/junk")
+                or low.endswith("/spam")
+            ):
                 fallback = fallback or name
         return preferred or fallback
     except Exception:
@@ -1192,6 +1343,7 @@ def _extract_attachment_text(msg, max_chars: int = 6000) -> str:
     total = 0
     import os as _os
     import tempfile as _tempfile
+
     for part in msg.walk():
         if part.is_multipart():
             continue
@@ -1220,13 +1372,16 @@ def _extract_attachment_text(msg, max_chars: int = 6000) -> str:
                     tmp.write(payload)
                     tmp.close()
                     from src.personal_docs import extract_pdf_text
+
                     text = extract_pdf_text(tmp.name) or ""
                 finally:
                     try:
                         _os.unlink(tmp.name)
                     except Exception:
                         pass
-            elif ct.startswith("text/") or fname_lower.endswith((".txt", ".md", ".csv", ".log", ".json")):
+            elif ct.startswith("text/") or fname_lower.endswith(
+                (".txt", ".md", ".csv", ".log", ".json")
+            ):
                 text = payload.decode("utf-8", errors="replace")
         except Exception as e:
             logger.debug(f"attachment-text extract failed for {filename}: {e}")
@@ -1254,7 +1409,9 @@ def _list_attachments_from_msg(msg):
     for part in msg.walk():
         cd = str(part.get("Content-Disposition", ""))
         ct = part.get_content_type()
-        is_attached_email = ct == "message/rfc822" and ("attachment" in cd.lower() or part.get_filename())
+        is_attached_email = ct == "message/rfc822" and (
+            "attachment" in cd.lower() or part.get_filename()
+        )
         if part.is_multipart() and not is_attached_email:
             continue
         # Skip text/html body parts (only consider real attachments)
@@ -1263,11 +1420,17 @@ def _list_attachments_from_msg(msg):
         filename = part.get_filename()
         if filename:
             filename = _decode_header(filename)
-            if ct == "message/rfc822" and not re.search(r"\.[A-Za-z0-9]{1,8}$", filename):
+            if ct == "message/rfc822" and not re.search(
+                r"\.[A-Za-z0-9]{1,8}$", filename
+            ):
                 filename = f"{filename}.eml"
         else:
             # Inline images, etc. - generate a name
-            ext = "eml" if ct == "message/rfc822" else (ct.split("/")[-1] if "/" in ct else "bin")
+            ext = (
+                "eml"
+                if ct == "message/rfc822"
+                else (ct.split("/")[-1] if "/" in ct else "bin")
+            )
             filename = f"attachment_{idx}.{ext}"
         payload = part.get_payload(decode=True)
         if payload is None and ct == "message/rfc822":
@@ -1276,13 +1439,15 @@ def _list_attachments_from_msg(msg):
             except Exception:
                 payload = b""
         size = len(payload) if payload is not None else 0
-        attachments.append({
-            "index": idx,
-            "filename": filename,
-            "content_type": ct,
-            "size": size,
-            "is_inline": "inline" in cd.lower(),
-        })
+        attachments.append(
+            {
+                "index": idx,
+                "filename": filename,
+                "content_type": ct,
+                "size": size,
+                "is_inline": "inline" in cd.lower(),
+            }
+        )
         idx += 1
     return attachments
 
@@ -1295,7 +1460,9 @@ def _is_likely_signature_image_attachment(att: dict) -> bool:
     size = int((att or {}).get("size") or 0)
     if re.search(r"^image\d{3,}\.(png|jpe?g|gif)$", filename):
         return True
-    if re.search(r"^(signature|logo|sig|footer|banner)[-_\d]*\.(png|jpe?g|gif|svg)$", filename):
+    if re.search(
+        r"^(signature|logo|sig|footer|banner)[-_\d]*\.(png|jpe?g|gif|svg)$", filename
+    ):
         return True
     return 0 < size < 30 * 1024
 
@@ -1316,7 +1483,9 @@ def _extract_attachment_to_disk(msg, index, target_dir):
     for part in msg.walk():
         cd = str(part.get("Content-Disposition", ""))
         ct = part.get_content_type()
-        is_attached_email = ct == "message/rfc822" and ("attachment" in cd.lower() or part.get_filename())
+        is_attached_email = ct == "message/rfc822" and (
+            "attachment" in cd.lower() or part.get_filename()
+        )
         if part.is_multipart() and not is_attached_email:
             continue
         if ct in ("text/plain", "text/html") and "attachment" not in cd:
@@ -1325,10 +1494,16 @@ def _extract_attachment_to_disk(msg, index, target_dir):
             filename = part.get_filename()
             if filename:
                 filename = _decode_header(filename)
-                if ct == "message/rfc822" and not re.search(r"\.[A-Za-z0-9]{1,8}$", filename):
+                if ct == "message/rfc822" and not re.search(
+                    r"\.[A-Za-z0-9]{1,8}$", filename
+                ):
                     filename = f"{filename}.eml"
             else:
-                ext = "eml" if ct == "message/rfc822" else (ct.split("/")[-1] if "/" in ct else "bin")
+                ext = (
+                    "eml"
+                    if ct == "message/rfc822"
+                    else (ct.split("/")[-1] if "/" in ct else "bin")
+                )
                 filename = f"attachment_{idx}.{ext}"
             # Sanitize
             safe_name = re.sub(r"[^\w\s\-.]", "_", filename).strip()
@@ -1397,14 +1572,16 @@ def _extract_text(msg):
     return ""
 
 
-def _fetch_sender_thread_context(sender_addr: str,
-                                 exclude_uid: str = "",
-                                 exclude_folder: str = "INBOX",
-                                 limit: int = 3,
-                                 max_chars_per_email: int = 1500,
-                                 max_attachment_chars: int = 4000,
-                                 account_id: str | None = None,
-                                 owner: str = "") -> str:
+def _fetch_sender_thread_context(
+    sender_addr: str,
+    exclude_uid: str = "",
+    exclude_folder: str = "INBOX",
+    limit: int = 3,
+    max_chars_per_email: int = 1500,
+    max_attachment_chars: int = 4000,
+    account_id: str | None = None,
+    owner: str = "",
+) -> str:
     """Pull the last N emails from `sender_addr` (across common folders),
     extract their body snippets + attachment text, and return one formatted
     block ready to be glued into an LLM system prompt as "REFERENCED MATERIAL".
@@ -1480,7 +1657,9 @@ def _fetch_sender_thread_context(sender_addr: str,
                     body_text = re.sub(r"\n{3,}", "\n\n", body_text)
                     if len(body_text) > max_chars_per_email:
                         body_text = body_text[:max_chars_per_email].rstrip() + "…"
-                    atts_text = _extract_attachment_text(msg, max_chars=max_attachment_chars)
+                    atts_text = _extract_attachment_text(
+                        msg, max_chars=max_attachment_chars
+                    )
                 except Exception as e:
                     logger.debug(f"sender-thread-context parse fail uid={uid}: {e}")
                     continue
@@ -1498,10 +1677,14 @@ def _fetch_sender_thread_context(sender_addr: str,
         logger.warning(f"sender-thread-context: imap failed: {e}")
     finally:
         if conn:
-            try: conn.close()
-            except Exception: pass
-            try: conn.logout()
-            except Exception: pass
+            try:
+                conn.close()
+            except Exception:
+                pass
+            try:
+                conn.logout()
+            except Exception:
+                pass
 
     if not blocks:
         return ""
@@ -1528,9 +1711,30 @@ def _pre_retrieve_context(
       - cap to 3 terms (was 4),
       - skip entirely for senders with no prior contact / no past mail.
     """
-    STOPWORDS = {"dear", "hello", "hi", "hey", "thanks", "thank", "regards",
-                 "best", "kind", "sincerely", "cheers", "the", "this", "that",
-                 "from", "subject", "re", "fwd", "yours", "my", "our", "your"}
+    STOPWORDS = {
+        "dear",
+        "hello",
+        "hi",
+        "hey",
+        "thanks",
+        "thank",
+        "regards",
+        "best",
+        "kind",
+        "sincerely",
+        "cheers",
+        "the",
+        "this",
+        "that",
+        "from",
+        "subject",
+        "re",
+        "fwd",
+        "yours",
+        "my",
+        "our",
+        "your",
+    }
     context_snippets = []
     terms_list = []
     try:
@@ -1543,6 +1747,7 @@ def _pre_retrieve_context(
         # IMAP history below, just not the shared contacts.
         try:
             from src.tool_security import owner_is_admin_or_single_user
+
             contacts_allowed = owner_is_admin_or_single_user(owner or None)
         except Exception:
             contacts_allowed = not bool(owner)
@@ -1550,6 +1755,7 @@ def _pre_retrieve_context(
         if contacts_allowed:
             try:
                 from routes.contacts_routes import _fetch_contacts
+
                 for c in _fetch_contacts() or []:
                     # Contacts are normalized to plural `emails` lists, but
                     # keep the legacy singular key fallback for older data.
@@ -1560,7 +1766,10 @@ def _pre_retrieve_context(
                     legacy_email = c.get("email")
                     if legacy_email:
                         contact_emails.append(str(legacy_email))
-                    if any((addr or "").strip().lower() == sender_addr for addr in contact_emails):
+                    if any(
+                        (addr or "").strip().lower() == sender_addr
+                        for addr in contact_emails
+                    ):
                         is_known = True
                         break
             except Exception:
@@ -1616,7 +1825,7 @@ def _pre_retrieve_context(
                     continue
                 for term in terms_list:
                     try:
-                        safe_term = term.replace('"', '').replace('\\', '')
+                        safe_term = term.replace('"', "").replace("\\", "")
                         st, data2 = ctx_conn.search(None, "TEXT", f'"{safe_term}"')
                         if st != "OK" or not data2 or not data2[0]:
                             continue
@@ -1634,7 +1843,7 @@ def _pre_retrieve_context(
                                 hdate = hmsg.get("Date", "")
                                 hbody = _extract_text(hmsg)[:600]
                                 context_snippets.append(
-                                    f"[{folder} match for \"{term}\"]\nFrom: {hfrom}\nDate: {hdate}\nSubject: {hsubj}\n{hbody}"
+                                    f'[{folder} match for "{term}"]\nFrom: {hfrom}\nDate: {hdate}\nSubject: {hsubj}\n{hbody}'
                                 )
                             except Exception:
                                 continue
@@ -1645,24 +1854,34 @@ def _pre_retrieve_context(
             logger.warning(f"IMAP context search failed: {_e}")
         finally:
             if ctx_conn:
-                try: ctx_conn.logout()
-                except Exception: pass
+                try:
+                    ctx_conn.logout()
+                except Exception:
+                    pass
 
         try:
             from routes.contacts_routes import _fetch_contacts
+
             all_contacts = _fetch_contacts() if contacts_allowed else []
             for term in terms_list:
                 t_lower = term.lower()
-                matches = [c for c in all_contacts
-                           if t_lower in (c.get("name") or "").lower()
-                           or any(t_lower in (e or "").lower() for e in (c.get("emails") or []))]
+                matches = [
+                    c
+                    for c in all_contacts
+                    if t_lower in (c.get("name") or "").lower()
+                    or any(
+                        t_lower in (e or "").lower() for e in (c.get("emails") or [])
+                    )
+                ]
                 for c in matches[:2]:
-                    parts = [f"Name: {c.get('name','')}"]
+                    parts = [f"Name: {c.get('name', '')}"]
                     if c.get("emails"):
                         parts.append(f"Email: {', '.join(c['emails'])}")
                     if c.get("phones"):
                         parts.append(f"Phone: {', '.join(c['phones'])}")
-                    context_snippets.append(f"[Contact match for \"{term}\"] " + ", ".join(parts))
+                    context_snippets.append(
+                        f'[Contact match for "{term}"] ' + ", ".join(parts)
+                    )
         except Exception:
             pass
     except Exception as e:
@@ -1703,6 +1922,7 @@ _EMAIL_REPLY_SYS_PROMPT_BASE = (
 
 
 # ── Request models ──
+
 
 class SendEmailRequest(BaseModel):
     to: str

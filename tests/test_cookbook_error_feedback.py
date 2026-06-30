@@ -29,7 +29,10 @@ def test_gated_model_returns_diagnosis():
     out = "403 Forbidden\nAccess to model is restricted"
     result = _diagnose_serve_output(out)
     assert result is not None
-    assert "gated" in result["message"].lower() or "unauthorized" in result["message"].lower()
+    assert (
+        "gated" in result["message"].lower()
+        or "unauthorized" in result["message"].lower()
+    )
 
 
 def test_traceback_fallback_fires_without_startup_success():

@@ -9,6 +9,7 @@ The client-supplied ``_endpoint`` is already validated through
 ``check_outbound_url`` before the first request; this pins the same guard on the
 *result* URL pulled from the response body, which previously went unchecked.
 """
+
 import base64
 
 import pytest

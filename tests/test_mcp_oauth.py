@@ -7,6 +7,7 @@ def test_registry_resolve_returns_code_and_state():
         fut = mcp_oauth.register_pending("st-1")
         assert mcp_oauth.resolve_pending("st-1", "the-code") is True
         return await asyncio.wait_for(fut, timeout=1)
+
     code, state = asyncio.run(go())
     assert code == "the-code"
     assert state == "st-1"
@@ -24,7 +25,9 @@ def test_register_pending_prunes_abandoned_flows():
         mcp_oauth._pending_ts.clear()
         old = mcp_oauth.register_pending("old-state")
         # Backdate the entry past the authorization window.
-        mcp_oauth._pending_ts["old-state"] = _t.monotonic() - (mcp_oauth.AUTH_WAIT_SECONDS + 1)
+        mcp_oauth._pending_ts["old-state"] = _t.monotonic() - (
+            mcp_oauth.AUTH_WAIT_SECONDS + 1
+        )
         # A new registration triggers a prune of the stale one.
         mcp_oauth.register_pending("new-state")
         return old

@@ -16,8 +16,11 @@ def test_tool_call_arguments_are_counted():
         "role": "assistant",
         "content": None,
         "tool_calls": [
-            {"id": "c1", "type": "function",
-             "function": {"name": "create_document", "arguments": big}},
+            {
+                "id": "c1",
+                "type": "function",
+                "function": {"name": "create_document", "arguments": big},
+            },
         ],
     }
     est = estimate_tokens([msg])
@@ -43,5 +46,12 @@ def test_dict_arguments_are_handled():
 
 def test_empty_and_malformed_tool_calls_are_safe():
     # tool_calls=None and non-dict entries must not raise and must not inflate.
-    assert estimate_tokens([{"role": "assistant", "content": "hi", "tool_calls": None}]) == 4 + int(2 * 0.3)
-    assert estimate_tokens([{"role": "assistant", "content": None, "tool_calls": ["bad", 5]}]) == 4
+    assert estimate_tokens(
+        [{"role": "assistant", "content": "hi", "tool_calls": None}]
+    ) == 4 + int(2 * 0.3)
+    assert (
+        estimate_tokens(
+            [{"role": "assistant", "content": None, "tool_calls": ["bad", 5]}]
+        )
+        == 4
+    )

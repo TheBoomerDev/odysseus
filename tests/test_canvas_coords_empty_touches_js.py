@@ -7,6 +7,7 @@ real mobile race — the finger is already lifted when the handler runs)
 made `e.touches[0].clientX` throw \"Cannot read properties of undefined\".
 The guard falls back to the event's own clientX/clientY in that case.
 """
+
 import json
 import shutil
 import subprocess
@@ -29,7 +30,11 @@ def _coords(event_js):
     """
     proc = subprocess.run(
         ["node", "--input-type=module"],
-        input=js, capture_output=True, text=True, cwd=str(_REPO), timeout=30,
+        input=js,
+        capture_output=True,
+        text=True,
+        cwd=str(_REPO),
+        timeout=30,
     )
     assert proc.returncode == 0, proc.stderr
     return json.loads(proc.stdout.strip())

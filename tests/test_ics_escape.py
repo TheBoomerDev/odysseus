@@ -1,4 +1,5 @@
 """Tests for iCalendar TEXT escaping in calendar export (RFC 5545 §3.3.11)."""
+
 from tests.helpers.calendar_routes import import_calendar_routes
 
 

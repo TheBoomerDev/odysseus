@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import logging
 import os
-import re
 import shutil
 import subprocess
 import time
@@ -25,6 +24,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Agent manifest
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CliAgent:
@@ -41,25 +41,54 @@ class CliAgent:
 
 # Discovery patterns: binary → agent config
 _AGENT_DISCOVERY: List[CliAgent] = [
-    CliAgent(id="claude", name="Claude Code", binary="claude",
-             capabilities=["code_edit", "code_review", "architecture_design",
-                          "doc_generation", "adversarial_review", "test_generation"],
-             cost_tier=0.8, invoke_template="{binary} {prompt}"),
-    CliAgent(id="codex", name="Codex CLI", binary="codex",
-             capabilities=["code_edit", "multi_file_diff", "code_review",
-                          "test_generation"],
-             cost_tier=0.7, invoke_template="{binary} {prompt}"),
-    CliAgent(id="agy", name="Antigravity CLI", binary="agy",
-             capabilities=["web_search", "code_review", "doc_generation",
-                          "test_execution"],
-             cost_tier=0.3, invoke_template="{binary} {prompt}"),
-    CliAgent(id="graphify", name="Graphify", binary="graphify",
-             capabilities=["code_review", "architecture_design"],
-             cost_tier=0.2, invoke_template="{binary} {prompt}"),
-    CliAgent(id="ollama", name="Ollama", binary="ollama",
-             capabilities=["doc_generation", "code_review"],
-             cost_tier=0.1, invoke_template="{binary} run {model} {prompt}",
-             timeout_seconds=300),
+    CliAgent(
+        id="claude",
+        name="Claude Code",
+        binary="claude",
+        capabilities=[
+            "code_edit",
+            "code_review",
+            "architecture_design",
+            "doc_generation",
+            "adversarial_review",
+            "test_generation",
+        ],
+        cost_tier=0.8,
+        invoke_template="{binary} {prompt}",
+    ),
+    CliAgent(
+        id="codex",
+        name="Codex CLI",
+        binary="codex",
+        capabilities=["code_edit", "multi_file_diff", "code_review", "test_generation"],
+        cost_tier=0.7,
+        invoke_template="{binary} {prompt}",
+    ),
+    CliAgent(
+        id="agy",
+        name="Antigravity CLI",
+        binary="agy",
+        capabilities=["web_search", "code_review", "doc_generation", "test_execution"],
+        cost_tier=0.3,
+        invoke_template="{binary} {prompt}",
+    ),
+    CliAgent(
+        id="graphify",
+        name="Graphify",
+        binary="graphify",
+        capabilities=["code_review", "architecture_design"],
+        cost_tier=0.2,
+        invoke_template="{binary} {prompt}",
+    ),
+    CliAgent(
+        id="ollama",
+        name="Ollama",
+        binary="ollama",
+        capabilities=["doc_generation", "code_review"],
+        cost_tier=0.1,
+        invoke_template="{binary} run {model} {prompt}",
+        timeout_seconds=300,
+    ),
 ]
 
 
@@ -91,7 +120,9 @@ def _get_version(binary: str, path: str) -> Optional[str]:
     try:
         result = subprocess.run(
             [path, "--version"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode == 0:
             return result.stdout.strip()[:60]

@@ -41,8 +41,16 @@ def test_non_apple_gpu_with_cores_does_not_match():
     real bandwidth from the general GPU table (e.g. the RTX 4090's 1008 GB/s),
     which is a different code path and not what this guard is about.
     """
-    assert _lookup_apple_bandwidth({"gpu_name": "NVIDIA GeForce RTX 4090", "gpu_cores": 128}) is None
-    assert _lookup_apple_bandwidth({"gpu_name": "AMD Radeon RX 9070 XT", "gpu_cores": 64}) is None
+    assert (
+        _lookup_apple_bandwidth(
+            {"gpu_name": "NVIDIA GeForce RTX 4090", "gpu_cores": 128}
+        )
+        is None
+    )
+    assert (
+        _lookup_apple_bandwidth({"gpu_name": "AMD Radeon RX 9070 XT", "gpu_cores": 64})
+        is None
+    )
 
 
 def test_apple_string_input_resolves_conservative_tier():

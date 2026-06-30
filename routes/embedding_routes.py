@@ -1,5 +1,6 @@
 # routes/embedding_routes.py
 """Routes for managing local fastembed embedding models and custom endpoints."""
+
 import os
 import json
 import shutil
@@ -9,7 +10,6 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Form, Depends
 from core.constants import EMBEDDING_ENDPOINT_FILE, FASTEMBED_CACHE_DIR
 from core.middleware import require_admin
-from src.runtime_paths import get_app_root
 
 logger = logging.getLogger(__name__)
 
@@ -20,12 +20,12 @@ _downloading: dict = {}
 
 # Curated recommendations — good coverage of size/quality tiers
 RECOMMENDED_MODELS = {
-    "sentence-transformers/all-MiniLM-L6-v2",     # 384d, 90MB  — fast & tiny, good default
-    "BAAI/bge-small-en-v1.5",                      # 384d, 67MB  — smallest, solid quality
-    "nomic-ai/nomic-embed-text-v1.5-Q",            # 768d, 130MB — quantized, great bang/buck
-    "BAAI/bge-base-en-v1.5",                       # 768d, 210MB — balanced mid-range
-    "snowflake/snowflake-arctic-embed-m",          # 768d, 430MB — strong performer
-    "BAAI/bge-large-en-v1.5",                      # 1024d, 1.2GB — highest quality
+    "sentence-transformers/all-MiniLM-L6-v2",  # 384d, 90MB  — fast & tiny, good default
+    "BAAI/bge-small-en-v1.5",  # 384d, 67MB  — smallest, solid quality
+    "nomic-ai/nomic-embed-text-v1.5-Q",  # 768d, 130MB — quantized, great bang/buck
+    "BAAI/bge-base-en-v1.5",  # 768d, 210MB — balanced mid-range
+    "snowflake/snowflake-arctic-embed-m",  # 768d, 430MB — strong performer
+    "BAAI/bge-large-en-v1.5",  # 1024d, 1.2GB — highest quality
 }
 
 
@@ -135,17 +135,19 @@ def setup_embedding_routes():
                 except ValueError:
                     cached_size = None
 
-            result.append({
-                "model": m["model"],
-                "dim": m.get("dim"),
-                "size_gb": m.get("size_in_GB", 0),
-                "description": m.get("description", ""),
-                "downloaded": downloaded,
-                "downloading": m["model"] in _downloading,
-                "active": m["model"] == active,
-                "recommended": m["model"] in RECOMMENDED_MODELS,
-                "cached_size_mb": cached_size,
-            })
+            result.append(
+                {
+                    "model": m["model"],
+                    "dim": m.get("dim"),
+                    "size_gb": m.get("size_in_GB", 0),
+                    "description": m.get("description", ""),
+                    "downloaded": downloaded,
+                    "downloading": m["model"] in _downloading,
+                    "active": m["model"] == active,
+                    "recommended": m["model"] in RECOMMENDED_MODELS,
+                    "cached_size_mb": cached_size,
+                }
+            )
 
         # Sort: active first, then downloaded, then by size
         result.sort(key=lambda x: (not x["active"], not x["downloaded"], x["size_gb"]))
@@ -253,7 +255,9 @@ def setup_embedding_routes():
         }
 
     @router.post("/endpoint")
-    def set_endpoint(url: str = Form(...), model: str = Form(""), api_key: str = Form("")):
+    def set_endpoint(
+        url: str = Form(...), model: str = Form(""), api_key: str = Form("")
+    ):
         """Save a custom embedding endpoint URL."""
         url = url.strip()
         if not url:
@@ -264,9 +268,11 @@ def setup_embedding_routes():
         # default; non-HTTP(S) schemes and the cloud metadata range are always
         # rejected. Set EMBEDDING_BLOCK_PRIVATE_IPS=true for full lockdown.
         from src.url_safety import check_outbound_url
+
         ok, reason = check_outbound_url(
             url,
-            block_private=os.getenv("EMBEDDING_BLOCK_PRIVATE_IPS", "false").lower() == "true",
+            block_private=os.getenv("EMBEDDING_BLOCK_PRIVATE_IPS", "false").lower()
+            == "true",
         )
         if not ok:
             raise HTTPException(400, f"Rejected endpoint URL: {reason}")
@@ -274,6 +280,7 @@ def setup_embedding_routes():
         # Quick health check
         try:
             import httpx
+
             resp = httpx.post(
                 url,
                 json={"input": ["test"], "model": model or "test"},
@@ -290,6 +297,7 @@ def setup_embedding_routes():
             data["model"] = model
         if api_key:
             from src.secret_storage import encrypt
+
             data["api_key"] = encrypt(api_key)
 
         _save_custom_endpoint(data)
@@ -301,6 +309,7 @@ def setup_embedding_routes():
 
         # Reset the RAG singleton so it picks up the new endpoint
         import src.rag_singleton as _rs
+
         _rs.rag_instance = None
         _rs._last_attempt = 0
 
@@ -308,16 +317,19 @@ def setup_embedding_routes():
         # instead of staying on the FastEmbed fallback for the process lifetime.
         try:
             from src.embeddings import reset_http_embed_state
+
             reset_http_embed_state()
         except Exception:
             pass
         try:
             from src.embedding_lanes import reset_embedding_lane_state
+
             reset_embedding_lane_state()
         except Exception:
             pass
         try:
             from src.tool_index import reset_tool_index
+
             reset_tool_index()
         except Exception:
             pass
@@ -325,6 +337,7 @@ def setup_embedding_routes():
         # Reset ChromaDB client (collections will be recreated with new embeddings)
         try:
             from src.chroma_client import reset_client
+
             reset_client()
         except Exception:
             pass
@@ -345,20 +358,24 @@ def setup_embedding_routes():
 
         # Reset the RAG singleton so it falls back to fastembed
         import src.rag_singleton as _rs
+
         _rs.rag_instance = None
         _rs._last_attempt = 0
         try:
             from src.embeddings import reset_http_embed_state
+
             reset_http_embed_state()
         except Exception:
             pass
         try:
             from src.embedding_lanes import reset_embedding_lane_state
+
             reset_embedding_lane_state()
         except Exception:
             pass
         try:
             from src.tool_index import reset_tool_index
+
             reset_tool_index()
         except Exception:
             pass
@@ -366,6 +383,7 @@ def setup_embedding_routes():
         # Reset ChromaDB client
         try:
             from src.chroma_client import reset_client
+
             reset_client()
         except Exception:
             pass

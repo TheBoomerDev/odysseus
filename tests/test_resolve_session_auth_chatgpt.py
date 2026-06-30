@@ -33,27 +33,44 @@ def test_chatgpt_subscription_auth_is_not_written_to_sessions_table(monkeypatch)
     TestSessionLocal = _mem_db(monkeypatch)
     db = TestSessionLocal()
     try:
-        db.add(ModelEndpoint(
-            id="ep1", name="ChatGPT Subscription", base_url=_CODEX_BASE,
-            provider_auth_id="auth1", owner="alice", is_enabled=True, api_key=None,
-        ))
-        db.add(DbSession(
-            id="sess1", name="chat", endpoint_url=_CODEX_BASE,
-            model="gpt-5.1-codex", owner="alice", headers={},
-        ))
+        db.add(
+            ModelEndpoint(
+                id="ep1",
+                name="ChatGPT Subscription",
+                base_url=_CODEX_BASE,
+                provider_auth_id="auth1",
+                owner="alice",
+                is_enabled=True,
+                api_key=None,
+            )
+        )
+        db.add(
+            DbSession(
+                id="sess1",
+                name="chat",
+                endpoint_url=_CODEX_BASE,
+                model="gpt-5.1-codex",
+                owner="alice",
+                headers={},
+            )
+        )
         db.commit()
     finally:
         db.close()
 
     # A live access token is resolved at request time.
     monkeypatch.setattr(
-        endpoint_resolver, "resolve_endpoint_runtime",
+        endpoint_resolver,
+        "resolve_endpoint_runtime",
         lambda ep, owner=None: (_CODEX_BASE, "live-access-token"),
     )
 
     sess = types.SimpleNamespace(
-        id="sess1", endpoint_url=_CODEX_BASE, model="gpt-5.1-codex",
-        owner="alice", headers={},
+        id="sess1",
+        endpoint_url=_CODEX_BASE,
+        model="gpt-5.1-codex",
+        owner="alice",
+        headers={},
     )
     chat_helpers.resolve_session_auth(sess, "sess1", owner="alice")
 
@@ -85,25 +102,42 @@ def test_non_subscription_auth_is_still_persisted_to_sessions_table(monkeypatch)
     TestSessionLocal = _mem_db(monkeypatch)
     db = TestSessionLocal()
     try:
-        db.add(ModelEndpoint(
-            id="ep1", name="Generic", base_url=base,
-            owner="alice", is_enabled=True, api_key="sk-static",
-        ))
-        db.add(DbSession(
-            id="sess1", name="chat", endpoint_url=base,
-            model="gpt-x", owner="alice", headers={},
-        ))
+        db.add(
+            ModelEndpoint(
+                id="ep1",
+                name="Generic",
+                base_url=base,
+                owner="alice",
+                is_enabled=True,
+                api_key="sk-static",
+            )
+        )
+        db.add(
+            DbSession(
+                id="sess1",
+                name="chat",
+                endpoint_url=base,
+                model="gpt-x",
+                owner="alice",
+                headers={},
+            )
+        )
         db.commit()
     finally:
         db.close()
 
     monkeypatch.setattr(
-        endpoint_resolver, "resolve_endpoint_runtime",
+        endpoint_resolver,
+        "resolve_endpoint_runtime",
         lambda ep, owner=None: (base, "sk-static"),
     )
 
     sess = types.SimpleNamespace(
-        id="sess1", endpoint_url=base, model="gpt-x", owner="alice", headers={},
+        id="sess1",
+        endpoint_url=base,
+        model="gpt-x",
+        owner="alice",
+        headers={},
     )
     chat_helpers.resolve_session_auth(sess, "sess1", owner="alice")
 
@@ -127,16 +161,28 @@ def test_chatgpt_subscription_clears_previously_persisted_bearer(monkeypatch):
     TestSessionLocal = _mem_db(monkeypatch)
     db = TestSessionLocal()
     try:
-        db.add(ModelEndpoint(
-            id="ep1", name="ChatGPT Subscription", base_url=_CODEX_BASE,
-            provider_auth_id="auth1", owner="alice", is_enabled=True, api_key=None,
-        ))
+        db.add(
+            ModelEndpoint(
+                id="ep1",
+                name="ChatGPT Subscription",
+                base_url=_CODEX_BASE,
+                provider_auth_id="auth1",
+                owner="alice",
+                is_enabled=True,
+                api_key=None,
+            )
+        )
         # Simulate the leak: a stale bearer already sitting in the sessions table.
-        db.add(DbSession(
-            id="sess1", name="chat", endpoint_url=_CODEX_BASE,
-            model="gpt-5.1-codex", owner="alice",
-            headers={"Authorization": "Bearer stale-leaked-token"},
-        ))
+        db.add(
+            DbSession(
+                id="sess1",
+                name="chat",
+                endpoint_url=_CODEX_BASE,
+                model="gpt-5.1-codex",
+                owner="alice",
+                headers={"Authorization": "Bearer stale-leaked-token"},
+            )
+        )
         db.commit()
     finally:
         db.close()
@@ -148,8 +194,11 @@ def test_chatgpt_subscription_clears_previously_persisted_bearer(monkeypatch):
     )
 
     sess = types.SimpleNamespace(
-        id="sess1", endpoint_url=_CODEX_BASE, model="gpt-5.1-codex",
-        owner="alice", headers={},
+        id="sess1",
+        endpoint_url=_CODEX_BASE,
+        model="gpt-5.1-codex",
+        owner="alice",
+        headers={},
     )
     chat_helpers.resolve_session_auth(sess, "sess1", owner="alice")
 
@@ -165,20 +214,35 @@ def test_chatgpt_subscription_clears_previously_persisted_bearer(monkeypatch):
         db.close()
 
 
-def test_chatgpt_subscription_fallback_auth_is_not_written_to_sessions_table(monkeypatch):
+def test_chatgpt_subscription_fallback_auth_is_not_written_to_sessions_table(
+    monkeypatch,
+):
     """Fallback endpoint selection must keep the resolved bearer request-local."""
     TestSessionLocal = _mem_db(monkeypatch)
     db = TestSessionLocal()
     try:
-        db.add(ModelEndpoint(
-            id="ep1", name="ChatGPT Subscription", base_url=_CODEX_BASE,
-            provider_auth_id="auth1", owner="alice", is_enabled=True, api_key=None,
-            cached_models='["gpt-5.1-codex"]',
-        ))
-        db.add(DbSession(
-            id="sess1", name="chat", endpoint_url="https://old.example/v1",
-            model="old-model", owner="alice", headers={},
-        ))
+        db.add(
+            ModelEndpoint(
+                id="ep1",
+                name="ChatGPT Subscription",
+                base_url=_CODEX_BASE,
+                provider_auth_id="auth1",
+                owner="alice",
+                is_enabled=True,
+                api_key=None,
+                cached_models='["gpt-5.1-codex"]',
+            )
+        )
+        db.add(
+            DbSession(
+                id="sess1",
+                name="chat",
+                endpoint_url="https://old.example/v1",
+                model="old-model",
+                owner="alice",
+                headers={},
+            )
+        )
         db.commit()
     finally:
         db.close()
@@ -190,8 +254,11 @@ def test_chatgpt_subscription_fallback_auth_is_not_written_to_sessions_table(mon
     )
 
     sess = types.SimpleNamespace(
-        id="sess1", endpoint_url="https://old.example/v1", model="old-model",
-        owner="alice", headers={},
+        id="sess1",
+        endpoint_url="https://old.example/v1",
+        model="old-model",
+        owner="alice",
+        headers={},
     )
     result = chat_helpers.try_fallback_endpoint(sess, "sess1")
 

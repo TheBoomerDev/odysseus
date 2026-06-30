@@ -31,7 +31,9 @@ _REPO = Path(__file__).resolve().parent.parent
 # preserve_import_state restores both sys.modules and parent-package attributes
 # after the block, preventing stub leakage into siblings.
 _TEMP_STUBS = ("core.database", "core.models")
-with preserve_import_state(*_TEMP_STUBS, "core.session_manager", "routes.session_routes"):
+with preserve_import_state(
+    *_TEMP_STUBS, "core.session_manager", "routes.session_routes"
+):
     for _name in _TEMP_STUBS:
         sys.modules[_name] = MagicMock(name=_name)
     if isinstance(sys.modules.get("core.session_manager"), MagicMock):
@@ -42,6 +44,7 @@ with preserve_import_state(*_TEMP_STUBS, "core.session_manager", "routes.session
 
 
 # ── backend: GET /api/sessions model redaction ─────────────────────────────
+
 
 def test_public_model_blanks_blind_compare_sessions():
     """A blind-compare helper session ("[CMP] Model A") must not expose its
@@ -73,6 +76,7 @@ def test_compare_prefix_constant_matches_frontend():
 
 # ── frontend: every [CMP] session name is blind-guarded ────────────────────
 
+
 def test_compare_session_names_are_blind_guarded():
     """Every line in static/js/compare/ that builds a '[CMP]' session name
     must branch on state._blindMode, so a blind comparison is never named
@@ -81,9 +85,7 @@ def test_compare_session_names_are_blind_guarded():
     assert compare_dir.is_dir(), f"missing {compare_dir}"
     offenders = []
     for path in sorted(compare_dir.glob("*.js")):
-        for lineno, line in enumerate(
-            path.read_text(encoding="utf-8").splitlines(), 1
-        ):
+        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             if "'[CMP] '" in line and "_blindMode" not in line:
                 offenders.append(f"{path.name}:{lineno}: {line.strip()}")
     assert not offenders, (

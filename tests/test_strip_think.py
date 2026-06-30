@@ -1,5 +1,5 @@
-import pytest
 from src.text_helpers import strip_think
+
 
 def test_strip_think_cases():
     # 1. Mid-text unclosed leak (fails before fix)
@@ -12,21 +12,35 @@ def test_strip_think_cases():
     assert strip_think("   <thinking> thinking at start") == ""
 
     # 3. Closed block
-    assert strip_think("Hello! <think> closed </think> Here is the answer.") == "Hello! Here is the answer."
-    assert strip_think("Hello! <thinking> closed </thinking> Here is the answer.") == "Hello! Here is the answer."
+    assert (
+        strip_think("Hello! <think> closed </think> Here is the answer.")
+        == "Hello! Here is the answer."
+    )
+    assert (
+        strip_think("Hello! <thinking> closed </thinking> Here is the answer.")
+        == "Hello! Here is the answer."
+    )
 
     # 4. No-tag passthrough
     assert strip_think("No tags here.") == "No tags here."
 
     # 5. Content-before-opener preserved (part of mid-text unclosed)
     assert strip_think("Prefix text <think> trailing thoughts") == "Prefix text"
-    
+
     # 6. Multiple blocks (closed + unclosed)
-    assert strip_think("Hello! <think> closed </think> Here is the answer. <think> unclosed") == "Hello! Here is the answer."
+    assert (
+        strip_think(
+            "Hello! <think> closed </think> Here is the answer. <think> unclosed"
+        )
+        == "Hello! Here is the answer."
+    )
 
 
 def test_strip_think_handles_thought_tags():
-    assert strip_think("<thought>internal reasoning</thought>Final answer.") == "Final answer."
+    assert (
+        strip_think("<thought>internal reasoning</thought>Final answer.")
+        == "Final answer."
+    )
 
 
 def test_strip_think_handles_gemma4_thought_channel():

@@ -8,10 +8,14 @@ docker variant in the Dependencies panel returned
 The other llama.cpp reference in routes/cookbook_routes.py already uses
 ggml-org; this guards the JS recipe so the two stay aligned.
 """
+
 from pathlib import Path
 
 RECIPES_JS = (
-    Path(__file__).resolve().parent.parent / "static" / "js" / "cookbook-deps-recipes.js"
+    Path(__file__).resolve().parent.parent
+    / "static"
+    / "js"
+    / "cookbook-deps-recipes.js"
 )
 
 

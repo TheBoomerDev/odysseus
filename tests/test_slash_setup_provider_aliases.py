@@ -11,7 +11,9 @@ def test_opencode_setup_provider_aliases_resolve():
     )
     assert match, "setup provider helper block not found"
     helper_source = match.group(0).removesuffix("\nfunction _normalizeSetupBaseUrl")
-    script = helper_source + r"""
+    script = (
+        helper_source
+        + r"""
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -26,4 +28,5 @@ const goCredential = _extractSetupProviderCredential('opencode go sk-test');
 assert(goCredential && goCredential.provider.name === 'OpenCode Go', 'opencode go credential provider failed');
 assert(goCredential.credential === 'sk-test', 'opencode go credential extraction failed');
 """
+    )
     subprocess.run(["node", "-e", script], check=True)

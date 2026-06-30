@@ -14,8 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -29,6 +28,7 @@ SDD_DIR = "data/cortex/sdd"
 # ---------------------------------------------------------------------------
 # Pipeline steps
 # ---------------------------------------------------------------------------
+
 
 class PipelineStep(str, Enum):
     ANALYZE = "analyze"
@@ -65,6 +65,7 @@ STEP_DESCRIPTIONS = {
 # SDD Documents
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SDDDocuments:
     goal_id: str
@@ -82,6 +83,7 @@ class SDDDocuments:
         except PermissionError:
             # Fallback to a writable location
             import tempfile
+
             fallback = Path(tempfile.gettempdir()) / "cortex-sdd" / self.goal_id
             fallback.mkdir(parents=True, exist_ok=True)
             doc_dir = fallback
@@ -109,6 +111,7 @@ class SDDDocuments:
 # SDD Generator
 # ---------------------------------------------------------------------------
 
+
 class SDDGenerator:
     """Generates Spec-Driven Development documents from a goal.
 
@@ -130,20 +133,24 @@ class SDDGenerator:
         """Check if Odysseus LLM is available by probing the endpoint."""
         try:
             import httpx
-            from src.config import settings
+            from src.config import settings  # type: ignore[reportAttributeAccessIssue]
+
             host = getattr(settings, "default_host", "localhost")
             r = httpx.get(f"http://{host}:11434/v1/models", timeout=3)
             self._llm_available = r.status_code == 200
         except Exception:
             self._llm_available = False
 
-    def _llm_generate(self, system_prompt: str, user_prompt: str, max_tokens: int = 1024) -> Optional[str]:
+    def _llm_generate(
+        self, system_prompt: str, user_prompt: str, max_tokens: int = 1024
+    ) -> Optional[str]:
         """Generate content using Odysseus's LLM. Falls back to None if unavailable."""
         if not self._llm_available:
             return None
         try:
             import httpx
             from src.config import settings
+
             host = getattr(settings, "default_host", "localhost")
             payload = {
                 "model": self.llm_model,
@@ -161,7 +168,12 @@ class SDDGenerator:
             )
             if r.status_code == 200:
                 data = r.json()
-                return data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                choices = data.get("choices", [{}])
+                if not choices:
+                    return ""
+                return (
+                    choices[0].get("message", {}).get("content", "")
+                )
             return None
         except Exception:
             self._llm_available = False
@@ -178,7 +190,9 @@ class SDDGenerator:
 
     def generate_plan_with_llm(self, goal: str) -> str:
         """Generate an implementation plan using LLM. Falls back to template."""
-        system = "You are a senior project manager. Generate a detailed implementation plan."
+        system = (
+            "You are a senior project manager. Generate a detailed implementation plan."
+        )
         user = f"Write a comprehensive implementation plan for: {goal}\n\nInclude: phases, tasks with checkboxes, timeline, resources, milestones, dependencies."
         content = self._llm_generate(system, user)
         if content:
@@ -204,6 +218,7 @@ class SDDGenerator:
             tasks_content=self.generate_tasks_with_llm(goal),
             created_at=datetime.now().isoformat(),
         )
+
     def generate_spec_template(self, goal: str) -> str:
         """Generate a specification document template."""
         return f"""# Specification
@@ -252,7 +267,6 @@ class SDDGenerator:
 1.
 2.
 3."""
-
 
     def generate_plan_template(self, goal: str) -> str:
         """Generate an implementation plan template."""
@@ -336,6 +350,7 @@ class SDDGenerator:
 # Pipeline Orchestrator
 # ---------------------------------------------------------------------------
 
+
 class PipelineOrchestrator:
     """Orchestrates the full SDD pipeline.
 
@@ -347,9 +362,7 @@ class PipelineOrchestrator:
 
     def __init__(self, sdd_generator: Optional[SDDGenerator] = None):
         self.generator = sdd_generator or SDDGenerator()
-        self._steps: Dict[PipelineStep, bool] = {
-            step: False for step in PipelineStep
-        }
+        self._steps: Dict[PipelineStep, bool] = {step: False for step in PipelineStep}
 
     def list_steps(self) -> List[Dict]:
         """List all pipeline steps with their status."""
@@ -394,21 +407,25 @@ class PipelineOrchestrator:
 
             # Check if this step should run
             if only_set and step_name not in only_set:
-                results["steps"].append({
-                    "step": step_name,
-                    "label": STEP_LABELS[step],
-                    "status": "skipped",
-                    "reason": "not in --only list",
-                })
+                results["steps"].append(
+                    {
+                        "step": step_name,
+                        "label": STEP_LABELS[step],
+                        "status": "skipped",
+                        "reason": "not in --only list",
+                    }
+                )
                 continue
 
             if step_name in skip_set:
-                results["steps"].append({
-                    "step": step_name,
-                    "label": STEP_LABELS[step],
-                    "status": "skipped",
-                    "reason": "in --skip list",
-                })
+                results["steps"].append(
+                    {
+                        "step": step_name,
+                        "label": STEP_LABELS[step],
+                        "status": "skipped",
+                        "reason": "in --skip list",
+                    }
+                )
                 continue
 
             # Execute step
@@ -421,11 +438,13 @@ class PipelineOrchestrator:
                 logger.exception("Pipeline step %s failed", step_name)
 
             self._steps[step] = status == "completed"
-            results["steps"].append({
-                "step": step_name,
-                "label": STEP_LABELS[step],
-                "status": status,
-            })
+            results["steps"].append(
+                {
+                    "step": step_name,
+                    "label": STEP_LABELS[step],
+                    "status": status,
+                }
+            )
 
             if status == "failed":
                 results["error"] = f"Pipeline failed at step '{step_name}': {output}"
@@ -464,8 +483,17 @@ class PipelineOrchestrator:
     def _step_analyze(self, goal: str) -> str:
         """Analyze goal to determine if it's dev or non-dev."""
         dev_keywords = [
-            "implement", "build", "code", "develop", "api", "endpoint",
-            "database", "frontend", "backend", "migration", "refactor",
+            "implement",
+            "build",
+            "code",
+            "develop",
+            "api",
+            "endpoint",
+            "database",
+            "frontend",
+            "backend",
+            "migration",
+            "refactor",
         ]
         is_dev = any(kw in goal.lower() for kw in dev_keywords)
         return f"Analysis complete: goal classified as {'DEV' if is_dev else 'NON-DEV'} work"
@@ -479,6 +507,7 @@ class PipelineOrchestrator:
     def _step_decompose(self, goal: str) -> str:
         """Decompose goal into subtasks."""
         from .goals import decompose as goals_decompose
+
         decomp = goals_decompose(goal)
         tasks = [f"  {t.id}: {t.description} [{t.agent}]" for t in decomp.tasks]
         return f"Decomposed into {len(decomp.tasks)} tasks:\n" + "\n".join(tasks)
@@ -486,11 +515,9 @@ class PipelineOrchestrator:
     def _step_assign(self, goal: str) -> str:
         """Assign subtasks to agents."""
         from .goals import decompose as goals_decompose
+
         decomp = goals_decompose(goal)
-        assignments = [
-            f"  {t.id}: {t.description} → {t.agent}"
-            for t in decomp.tasks
-        ]
+        assignments = [f"  {t.id}: {t.description} → {t.agent}" for t in decomp.tasks]
         return f"Assigned {len(decomp.tasks)} tasks:\n" + "\n".join(assignments)
 
     def _step_consolidate(self, goal_id: str) -> str:

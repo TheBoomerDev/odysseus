@@ -1,6 +1,7 @@
 """
 Basic tests for odysseus-ui application structure
 """
+
 import pytest
 import sys
 import os
@@ -42,7 +43,9 @@ class TestAppStructure:
 
     def test_env_example_exists(self):
         """Test that .env.example exists"""
-        env_example_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env.example")
+        env_example_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), ".env.example"
+        )
         assert os.path.exists(env_example_path), ".env.example file should exist"
 
 
@@ -51,23 +54,23 @@ class TestImports:
 
     def test_constants_importable(self):
         """Test that constants module is importable"""
-        from src.constants import BASE_DIR, STATIC_DIR, SESSIONS_FILE, MEMORY_FILE
+        from src.constants import BASE_DIR, STATIC_DIR
+
         assert BASE_DIR is not None
         assert STATIC_DIR is not None
 
     def test_app_helpers_importable(self):
         """Test that app_helpers module is importable"""
         from src.app_helpers import abs_join
+
         assert callable(abs_join)
 
     def test_exceptions_importable(self):
         """Test that exceptions module is importable"""
         from src.exceptions import (
             SessionNotFoundError,
-            InvalidFileUploadError,
-            LLMServiceError,
-            WebSearchError,
         )
+
         # These should be exception classes
         assert issubclass(SessionNotFoundError, Exception)
 

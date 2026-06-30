@@ -14,7 +14,10 @@ def test_markdown_raw_html_sanitizer_checks_url_attr_edge_cases():
     assert "function _isDangerousSrcset(value)" in src
     assert "'srcset'" in src
     assert "candidate => _isDangerousUrl(candidate)" in src
-    assert "name === 'srcset' ? _isDangerousSrcset(attr.value) : _isDangerousUrl(attr.value)" in src
+    assert (
+        "name === 'srcset' ? _isDangerousSrcset(attr.value) : _isDangerousUrl(attr.value)"
+        in src
+    )
 
 
 def test_markdown_raw_html_sanitizer_strips_scriptable_css():

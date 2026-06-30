@@ -32,11 +32,18 @@ TOKEN_PROFILES = {
     "chat": ["chat"],
     "codex_todos": ["todos:read", "todos:write"],
     "codex_documents": ["documents:read", "documents:write"],
-    "codex_email_drafts": ["email:read", "email:draft", "documents:read", "documents:write"],
+    "codex_email_drafts": [
+        "email:read",
+        "email:draft",
+        "documents:read",
+        "documents:write",
+    ],
 }
 
 
-def _normalize_scopes(scopes: str | list[str] | None = None, profile: str | None = None) -> list[str]:
+def _normalize_scopes(
+    scopes: str | list[str] | None = None, profile: str | None = None
+) -> list[str]:
     profile = profile if isinstance(profile, str) else None
     profile_key = (profile or "").strip()
     if profile_key:
@@ -46,7 +53,9 @@ def _normalize_scopes(scopes: str | list[str] | None = None, profile: str | None
     elif isinstance(scopes, list):
         requested = [str(s).strip() for s in scopes if str(s).strip()]
     elif isinstance(scopes, str) and scopes:
-        requested = [s.strip() for s in scopes.replace(" ", ",").split(",") if s.strip()]
+        requested = [
+            s.strip() for s in scopes.replace(" ", ",").split(",") if s.strip()
+        ]
     else:
         requested = [DEFAULT_SCOPES]
 
@@ -87,9 +96,15 @@ def setup_api_token_routes() -> APIRouter:
                     "name": t.name,
                     "owner": getattr(t, "owner", None),
                     "token_prefix": t.token_prefix,
-                    "scopes": [s.strip() for s in (getattr(t, "scopes", "") or DEFAULT_SCOPES).split(",") if s.strip()],
+                    "scopes": [
+                        s.strip()
+                        for s in (getattr(t, "scopes", "") or DEFAULT_SCOPES).split(",")
+                        if s.strip()
+                    ],
                     "is_active": t.is_active,
-                    "last_used_at": t.last_used_at.isoformat() if t.last_used_at else None,
+                    "last_used_at": t.last_used_at.isoformat()
+                    if t.last_used_at
+                    else None,
                     "created_at": t.created_at.isoformat() if t.created_at else None,
                 }
                 for t in tokens
@@ -132,15 +147,17 @@ def setup_api_token_routes() -> APIRouter:
         token_id = str(uuid.uuid4())[:8]
 
         with get_db_session() as db:
-            db.add(ApiToken(
-                id=token_id,
-                owner=owner,
-                name=name,
-                token_hash=token_hash,
-                token_prefix=raw_token[:8],
-                scopes=scopes_value,
-                is_active=True,
-            ))
+            db.add(
+                ApiToken(
+                    id=token_id,
+                    owner=owner,
+                    name=name,
+                    token_hash=token_hash,
+                    token_prefix=raw_token[:8],
+                    scopes=scopes_value,
+                    is_active=True,
+                )
+            )
         _invalidate_cache(request)
 
         return {

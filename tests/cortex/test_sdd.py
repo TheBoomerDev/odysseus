@@ -26,6 +26,7 @@ from cortex.sdd import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def temp_dir():
     with tempfile.TemporaryDirectory() as tmp:
@@ -45,6 +46,7 @@ def orchestrator():
 # ---------------------------------------------------------------------------
 # SDDGenerator — generate_all (templates)
 # ---------------------------------------------------------------------------
+
 
 class TestGenerateAll:
     def test_generate_all_returns_sdd_documents(self, generator):
@@ -91,6 +93,7 @@ class TestGenerateAll:
 # SDDGenerator — generate_all_with_llm fallback
 # ---------------------------------------------------------------------------
 
+
 class TestGenerateAllWithLLM:
     def test_fallback_to_templates(self, generator):
         """When LLM is unavailable, generate_all_with_llm falls back to templates."""
@@ -129,6 +132,7 @@ class TestGenerateAllWithLLM:
 # ---------------------------------------------------------------------------
 # SDDDocuments.save()
 # ---------------------------------------------------------------------------
+
 
 class TestSDDDocumentsSave:
     def test_save_creates_files(self, temp_dir):
@@ -182,7 +186,13 @@ class TestSDDDocumentsSave:
 
     def test_save_returns_dir_path(self, temp_dir):
         """save() returns the path to the created directory."""
-        docs = SDDDocuments(goal_id="path-test", goal="x", spec_content="", plan_content="", tasks_content="")
+        docs = SDDDocuments(
+            goal_id="path-test",
+            goal="x",
+            spec_content="",
+            plan_content="",
+            tasks_content="",
+        )
         path = docs.save(base_dir=temp_dir)
         assert Path(path).name == "path-test"
 
@@ -190,6 +200,7 @@ class TestSDDDocumentsSave:
 # ---------------------------------------------------------------------------
 # PipelineOrchestrator
 # ---------------------------------------------------------------------------
+
 
 class TestPipelineOrchestrator:
     def test_list_steps_contains_all_7(self, orchestrator):
@@ -237,6 +248,7 @@ class TestPipelineOrchestrator:
     def test_run_document_step_creates_files(self, orchestrator, generator, temp_dir):
         """Running DOCUMENT generates SDD files."""
         import cortex.sdd as sdd_mod
+
         sdd_mod.SDD_DIR = temp_dir
         orchestrator.generator = generator
         result = orchestrator.run("g-doc", "build a login", only=["document"])
@@ -254,7 +266,9 @@ class TestPipelineOrchestrator:
     def test_run_only_steps(self, orchestrator, generator):
         """When 'only' is set, only specified steps run (others are skipped)."""
         orchestrator.generator = generator
-        result = orchestrator.run("g-only", "build an API", only=["analyze", "document"])
+        result = orchestrator.run(
+            "g-only", "build an API", only=["analyze", "document"]
+        )
         # All 7 steps are returned; only-specified ones are 'completed', rest 'skipped'
         assert len(result["steps"]) == 7
         for s in result["steps"]:
@@ -274,6 +288,7 @@ class TestPipelineOrchestrator:
 # ---------------------------------------------------------------------------
 # Edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestSDDEdgeCases:
     def test_empty_goal(self, generator):
@@ -297,6 +312,12 @@ class TestSDDEdgeCases:
 
     def test_save_empty_documents(self, temp_dir):
         """save() works even with empty document content."""
-        docs = SDDDocuments(goal_id="empty-doc", goal="empty", spec_content="", plan_content="", tasks_content="")
+        docs = SDDDocuments(
+            goal_id="empty-doc",
+            goal="empty",
+            spec_content="",
+            plan_content="",
+            tasks_content="",
+        )
         path = docs.save(base_dir=temp_dir)
         assert Path(path).exists()

@@ -11,8 +11,7 @@ Integrates with cortex/goal_state.py for full 8-state lifecycle tracking.
 from __future__ import annotations
 
 import re
-import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Optional, Dict, Any
 
 from .goal_state import GoalTracker, GoalSession, GoalStatus
@@ -21,6 +20,7 @@ from .goal_state import GoalTracker, GoalSession, GoalStatus
 # ---------------------------------------------------------------------------
 # Data types
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SubTask:
@@ -51,49 +51,120 @@ class GoalDecomposition:
 _TEMPLATES: List[dict] = [
     {
         "id": "migrate-database",
-        "match": lambda g: bool(re.search(r"migrate.*(database|db|mongo|postgres|sql)", g, re.I)),
+        "match": lambda g: bool(
+            re.search(r"migrate.*(database|db|mongo|postgres|sql)", g, re.I)
+        ),
         "tasks": [
-            {"description": "Research breaking changes and migration guide", "agent": "research",
-             "capabilities": ["web_search", "doc_synthesis"], "depends_on": [], "optional": False},
-            {"description": "Design new schema mapping", "agent": "architect",
-             "capabilities": ["architecture_design", "schema_design"], "depends_on": ["t1"], "optional": False},
-            {"description": "Generate migration scripts", "agent": "codex",
-             "capabilities": ["code_edit", "multi_file_diff"], "depends_on": ["t2"], "optional": False},
-            {"description": "Write tests for new schema", "agent": "codex",
-             "capabilities": ["test_generation"], "depends_on": ["t3"], "optional": False},
-            {"description": "Validate — run tests, adversarial review", "agent": "verifier",
-             "capabilities": ["test_execution", "adversarial_review"], "depends_on": ["t4"], "optional": False},
-            {"description": "Document migration in README/changelog", "agent": "architect",
-             "capabilities": ["doc_generation"], "depends_on": ["t5"], "optional": True},
+            {
+                "description": "Research breaking changes and migration guide",
+                "agent": "research",
+                "capabilities": ["web_search", "doc_synthesis"],
+                "depends_on": [],
+                "optional": False,
+            },
+            {
+                "description": "Design new schema mapping",
+                "agent": "architect",
+                "capabilities": ["architecture_design", "schema_design"],
+                "depends_on": ["t1"],
+                "optional": False,
+            },
+            {
+                "description": "Generate migration scripts",
+                "agent": "codex",
+                "capabilities": ["code_edit", "multi_file_diff"],
+                "depends_on": ["t2"],
+                "optional": False,
+            },
+            {
+                "description": "Write tests for new schema",
+                "agent": "codex",
+                "capabilities": ["test_generation"],
+                "depends_on": ["t3"],
+                "optional": False,
+            },
+            {
+                "description": "Validate — run tests, adversarial review",
+                "agent": "verifier",
+                "capabilities": ["test_execution", "adversarial_review"],
+                "depends_on": ["t4"],
+                "optional": False,
+            },
+            {
+                "description": "Document migration in README/changelog",
+                "agent": "architect",
+                "capabilities": ["doc_generation"],
+                "depends_on": ["t5"],
+                "optional": True,
+            },
         ],
     },
     {
         "id": "audit-security",
         "match": lambda g: bool(re.search(r"audit|security|vulnerabilit|cve", g, re.I)),
         "tasks": [
-            {"description": "Scan dependencies for known CVEs", "agent": "research",
-             "capabilities": ["web_search"], "depends_on": [], "optional": False},
-            {"description": "Static analysis: OWASP top 10 patterns", "agent": "codex",
-             "capabilities": ["code_review", "adversarial_review"], "depends_on": [], "optional": False},
-            {"description": "Secrets scanning (hardcoded keys, tokens)", "agent": "research",
-             "capabilities": ["code_review"], "depends_on": [], "optional": False},
-            {"description": "Synthesize findings into prioritized report", "agent": "architect",
-             "capabilities": ["doc_generation", "trade_off_analysis"],
-             "depends_on": ["t1", "t2", "t3"], "optional": False},
+            {
+                "description": "Scan dependencies for known CVEs",
+                "agent": "research",
+                "capabilities": ["web_search"],
+                "depends_on": [],
+                "optional": False,
+            },
+            {
+                "description": "Static analysis: OWASP top 10 patterns",
+                "agent": "codex",
+                "capabilities": ["code_review", "adversarial_review"],
+                "depends_on": [],
+                "optional": False,
+            },
+            {
+                "description": "Secrets scanning (hardcoded keys, tokens)",
+                "agent": "research",
+                "capabilities": ["code_review"],
+                "depends_on": [],
+                "optional": False,
+            },
+            {
+                "description": "Synthesize findings into prioritized report",
+                "agent": "architect",
+                "capabilities": ["doc_generation", "trade_off_analysis"],
+                "depends_on": ["t1", "t2", "t3"],
+                "optional": False,
+            },
         ],
     },
     {
         "id": "refactor-module",
         "match": lambda g: bool(re.search(r"refactor|split|divide|modular", g, re.I)),
         "tasks": [
-            {"description": "Analyze current module structure", "agent": "research",
-             "capabilities": ["code_review"], "depends_on": [], "optional": False},
-            {"description": "Design target module boundaries", "agent": "architect",
-             "capabilities": ["architecture_design"], "depends_on": ["t1"], "optional": False},
-            {"description": "Apply refactor — split files, update imports", "agent": "codex",
-             "capabilities": ["code_edit", "multi_file_diff"], "depends_on": ["t2"], "optional": False},
-            {"description": "Verify tests still pass", "agent": "verifier",
-             "capabilities": ["test_execution"], "depends_on": ["t3"], "optional": False},
+            {
+                "description": "Analyze current module structure",
+                "agent": "research",
+                "capabilities": ["code_review"],
+                "depends_on": [],
+                "optional": False,
+            },
+            {
+                "description": "Design target module boundaries",
+                "agent": "architect",
+                "capabilities": ["architecture_design"],
+                "depends_on": ["t1"],
+                "optional": False,
+            },
+            {
+                "description": "Apply refactor — split files, update imports",
+                "agent": "codex",
+                "capabilities": ["code_edit", "multi_file_diff"],
+                "depends_on": ["t2"],
+                "optional": False,
+            },
+            {
+                "description": "Verify tests still pass",
+                "agent": "verifier",
+                "capabilities": ["test_execution"],
+                "depends_on": ["t3"],
+                "optional": False,
+            },
         ],
     },
 ]
@@ -105,7 +176,14 @@ _TEMPLATES: List[dict] = [
 
 _GOAL_PRESETS: Dict[str, Dict[str, Any]] = {
     "feature": {
-        "steps": ["analyzing", "planning", "decomposing", "assigning", "executing", "verifying"],
+        "steps": [
+            "analyzing",
+            "planning",
+            "decomposing",
+            "assigning",
+            "executing",
+            "verifying",
+        ],
         "description": "New feature implementation",
     },
     "research": {
@@ -131,38 +209,65 @@ _GOAL_PRESETS: Dict[str, Dict[str, Any]] = {
 # Decomposition functions
 # ---------------------------------------------------------------------------
 
+
 def _make_template_tasks(template: dict) -> List[SubTask]:
     """Build SubTask list from a template dict."""
     tasks: List[SubTask] = []
     for idx, t in enumerate(template["tasks"]):
-        tasks.append(SubTask(
-            id=f"t{idx + 1}",
-            description=t["description"],
-            agent=t["agent"],
-            capabilities=t["capabilities"],
-            depends_on=list(t.get("depends_on", [])),
-            optional=t.get("optional", False),
-            estimated_cost_usd=0.05,
-            estimated_duration_seconds=60,
-        ))
+        tasks.append(
+            SubTask(
+                id=f"t{idx + 1}",
+                description=t["description"],
+                agent=t["agent"],
+                capabilities=t["capabilities"],
+                depends_on=list(t.get("depends_on", [])),
+                optional=t.get("optional", False),
+                estimated_cost_usd=0.05,
+                estimated_duration_seconds=60,
+            )
+        )
     return tasks
 
 
 def _heuristic_tasks(goal: str) -> List[SubTask]:
     """Fallback decomposition for unmatched goals."""
     return [
-        SubTask(id="t1-research", description=f'Research: gather context for "{goal[:80]}"',
-                agent="research", capabilities=["web_search", "doc_synthesis"],
-                depends_on=[], estimated_cost_usd=0.05, estimated_duration_seconds=60),
-        SubTask(id="t2-design", description="Design approach and trade-offs",
-                agent="architect", capabilities=["architecture_design"],
-                depends_on=["t1-research"], estimated_cost_usd=0.08, estimated_duration_seconds=90),
-        SubTask(id="t3-implement", description="Implement changes",
-                agent="codex", capabilities=["code_edit", "multi_file_diff"],
-                depends_on=["t2-design"], estimated_cost_usd=0.15, estimated_duration_seconds=120),
-        SubTask(id="t4-validate", description="Run tests and review",
-                agent="verifier", capabilities=["test_execution", "code_review"],
-                depends_on=["t3-implement"], estimated_cost_usd=0.07, estimated_duration_seconds=60),
+        SubTask(
+            id="t1-research",
+            description=f'Research: gather context for "{goal[:80]}"',
+            agent="research",
+            capabilities=["web_search", "doc_synthesis"],
+            depends_on=[],
+            estimated_cost_usd=0.05,
+            estimated_duration_seconds=60,
+        ),
+        SubTask(
+            id="t2-design",
+            description="Design approach and trade-offs",
+            agent="architect",
+            capabilities=["architecture_design"],
+            depends_on=["t1-research"],
+            estimated_cost_usd=0.08,
+            estimated_duration_seconds=90,
+        ),
+        SubTask(
+            id="t3-implement",
+            description="Implement changes",
+            agent="codex",
+            capabilities=["code_edit", "multi_file_diff"],
+            depends_on=["t2-design"],
+            estimated_cost_usd=0.15,
+            estimated_duration_seconds=120,
+        ),
+        SubTask(
+            id="t4-validate",
+            description="Run tests and review",
+            agent="verifier",
+            capabilities=["test_execution", "code_review"],
+            depends_on=["t3-implement"],
+            estimated_cost_usd=0.07,
+            estimated_duration_seconds=60,
+        ),
     ]
 
 
@@ -211,13 +316,16 @@ def render_tree(decomp: GoalDecomposition) -> str:
     for task in decomp.tasks:
         deps = f" (depends on {', '.join(task.depends_on)})" if task.depends_on else ""
         opt = " [optional]" if task.optional else ""
-        lines.append(f"  ├─ {task.id}: {task.description} [{task.agent}] ~${task.estimated_cost_usd:.3f}{deps}{opt}")
+        lines.append(
+            f"  ├─ {task.id}: {task.description} [{task.agent}] ~${task.estimated_cost_usd:.3f}{deps}{opt}"
+        )
     return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
 # High-level API: decompose + create tracked session
 # ---------------------------------------------------------------------------
+
 
 def decompose_and_track(
     goal_id: str,
@@ -248,7 +356,7 @@ def decompose_and_track(
     ctx["preset_description"] = _GOAL_PRESETS.get(preset, {}).get("description", "")
     ctx["steps"] = _GOAL_PRESETS.get(preset, {}).get("steps", [])
 
-    session = tracker.create_goal(goal_id, goal, context=ctx)
+    tracker.create_goal(goal_id, goal, context=ctx)
 
     # Auto-advance to ANALYZING
     tracker.transition(goal_id, GoalStatus.ANALYZING)

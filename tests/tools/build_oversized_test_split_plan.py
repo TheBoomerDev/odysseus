@@ -4,6 +4,7 @@
 The output is a planning document only. It does not move tests, rewrite
 assertions, extract helpers, or change CI.
 """
+
 from __future__ import annotations
 
 import ast
@@ -326,11 +327,7 @@ def first_manual_review_section(metrics: list[FileMetric]) -> list[str]:
 
 
 def taxonomy_gap_section(metrics: list[FileMetric]) -> list[str]:
-    uncategorized = [
-        metric
-        for metric in metrics
-        if metric.area == "uncategorized"
-    ]
+    uncategorized = [metric for metric in metrics if metric.area == "uncategorized"]
     uncategorized = sorted(
         uncategorized,
         key=lambda m: (m.collected, m.lines),
@@ -368,9 +365,7 @@ def taxonomy_gap_section(metrics: list[FileMetric]) -> list[str]:
 
 def deferred_section(metrics: list[FileMetric]) -> list[str]:
     deferred = [
-        metric
-        for metric in metrics
-        if HIGH_RISK_SIGNALS.intersection(metric.signals)
+        metric for metric in metrics if HIGH_RISK_SIGNALS.intersection(metric.signals)
     ]
     deferred = sorted(deferred, key=lambda m: (m.collected, m.lines), reverse=True)
 
@@ -401,27 +396,29 @@ def write_distribution(
     min_count: int = 1,
 ) -> None:
     displayed = [
-        (value, count)
-        for value, count in sorted(values.items())
-        if count >= min_count
+        (value, count) for value, count in sorted(values.items()) if count >= min_count
     ]
     omitted_values = sum(1 for count in values.values() if count < min_count)
     omitted_files = sum(count for count in values.values() if count < min_count)
 
-    lines.extend([
-        f"{title}:",
-        "",
-        "| Value | Files |",
-        "|---|---:|",
-    ])
+    lines.extend(
+        [
+            f"{title}:",
+            "",
+            "| Value | Files |",
+            "|---|---:|",
+        ]
+    )
     for value, count in displayed:
         lines.append(f"| {value} | {count} |")
 
     if omitted_values:
-        lines.extend([
-            "",
-            f"Values below {min_count} files: {omitted_values} values covering {omitted_files} files.",
-        ])
+        lines.extend(
+            [
+                "",
+                f"Values below {min_count} files: {omitted_values} values covering {omitted_files} files.",
+            ]
+        )
 
     lines.append("")
 
@@ -477,50 +474,54 @@ def write_report(metrics: list[FileMetric], node_count_total: int) -> None:
     write_distribution(lines, "Area distribution", areas)
     write_distribution(lines, "Sub-area distribution", sub_areas, min_count=2)
 
-    lines.extend(metric_table("Top files by collected pytest items", by_collected[:TOP_LIMIT]))
+    lines.extend(
+        metric_table("Top files by collected pytest items", by_collected[:TOP_LIMIT])
+    )
     lines.extend(metric_table("Top files by physical line count", by_lines[:TOP_LIMIT]))
     lines.extend(candidate_section(candidates))
     lines.extend(taxonomy_gap_section(candidates))
     lines.extend(first_manual_review_section(candidates))
     lines.extend(deferred_section(candidates))
 
-    lines.extend([
-        "## Rules for future split PRs",
-        "",
-        "- One file or one coherent file-family per PR.",
-        "- No assertion rewrites mixed with file moves.",
-        "- No helper extraction mixed with file moves.",
-        "- No production code changes.",
-        "- No CI workflow changes.",
-        "- Preserve existing markers and taxonomy unless the split issue explicitly says otherwise.",
-        "- Validate the original file's collected tests before and after the split.",
-        "- Validate any neighboring taxonomy/focused-runner behavior if paths change.",
-        "- Treat files with route/API, DB/session, import-state, or security signals as higher-risk until manually reviewed.",
-        "",
-        "## Suggested next step",
-        "",
-        "Use this plan to choose the first actual oversized-file split issue.",
-        "The first split should prefer a file with high review value and low setup risk.",
-        "Do not start a split PR from this planning issue alone if the file's boundaries are still ambiguous.",
-        "",
-        "## Reproduction command",
-        "",
-        "This document was generated with:",
-        "",
-        "```bash",
-        ".venv/bin/python tests/tools/build_oversized_test_split_plan.py",
-        "```",
-        "",
-        "## Freshness check",
-        "",
-        "After editing the builder or rebasing the branch, regenerate the plan and confirm no unexpected plan drift:",
-        "",
-        "```bash",
-        ".venv/bin/python tests/tools/build_oversized_test_split_plan.py",
-        "git diff --exit-code -- tests/OVERSIZED_TEST_SPLIT_PLAN.md",
-        "```",
-        "",
-    ])
+    lines.extend(
+        [
+            "## Rules for future split PRs",
+            "",
+            "- One file or one coherent file-family per PR.",
+            "- No assertion rewrites mixed with file moves.",
+            "- No helper extraction mixed with file moves.",
+            "- No production code changes.",
+            "- No CI workflow changes.",
+            "- Preserve existing markers and taxonomy unless the split issue explicitly says otherwise.",
+            "- Validate the original file's collected tests before and after the split.",
+            "- Validate any neighboring taxonomy/focused-runner behavior if paths change.",
+            "- Treat files with route/API, DB/session, import-state, or security signals as higher-risk until manually reviewed.",
+            "",
+            "## Suggested next step",
+            "",
+            "Use this plan to choose the first actual oversized-file split issue.",
+            "The first split should prefer a file with high review value and low setup risk.",
+            "Do not start a split PR from this planning issue alone if the file's boundaries are still ambiguous.",
+            "",
+            "## Reproduction command",
+            "",
+            "This document was generated with:",
+            "",
+            "```bash",
+            ".venv/bin/python tests/tools/build_oversized_test_split_plan.py",
+            "```",
+            "",
+            "## Freshness check",
+            "",
+            "After editing the builder or rebasing the branch, regenerate the plan and confirm no unexpected plan drift:",
+            "",
+            "```bash",
+            ".venv/bin/python tests/tools/build_oversized_test_split_plan.py",
+            "git diff --exit-code -- tests/OVERSIZED_TEST_SPLIT_PLAN.md",
+            "```",
+            "",
+        ]
+    )
 
     OUTPUT.write_text("\n".join(lines), encoding="utf-8")
 
@@ -549,7 +550,9 @@ def assert_taxonomy_worked(metrics: list[FileMetric]) -> None:
 
     unknown = sum(1 for metric in metrics if metric.area == "unknown")
     if unknown == len(metrics):
-        raise SystemExit("ERROR: taxonomy classification returned unknown for every file")
+        raise SystemExit(
+            "ERROR: taxonomy classification returned unknown for every file"
+        )
 
 
 def main() -> int:
@@ -559,7 +562,9 @@ def main() -> int:
 
     classify_test_path = load_taxonomy_classifier()
     node_counts = collect_node_counts()
-    metrics = [metric_for(path, node_counts, classify_test_path) for path in test_files()]
+    metrics = [
+        metric_for(path, node_counts, classify_test_path) for path in test_files()
+    ]
 
     assert_taxonomy_worked(metrics)
     write_report(metrics, sum(node_counts.values()))

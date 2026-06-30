@@ -8,6 +8,7 @@ TOOL_HANDLERS, (2) the moved logic runs and threads owner/session from ctx
 (3) tool_execution.py dispatches them through the registry rather than the
 legacy dispatch_ai_tool elif.
 """
+
 import asyncio
 from pathlib import Path
 
@@ -16,7 +17,12 @@ import src.database as database
 from src.agent_tools import TOOL_HANDLERS
 from src.agent_tools import session_tools as st
 
-_SESSION_TOOLS = ("create_session", "list_sessions", "send_to_session", "manage_session")
+_SESSION_TOOLS = (
+    "create_session",
+    "list_sessions",
+    "send_to_session",
+    "manage_session",
+)
 
 
 def test_session_tools_registered():
@@ -35,7 +41,9 @@ def test_list_sessions_handler_threads_ctx(monkeypatch):
         return {"results": "ok"}
 
     monkeypatch.setattr(st, "list_sessions", spy)
-    res = asyncio.run(st.ListSessionsTool().execute("q", {"owner": "alice", "session_id": "s1"}))
+    res = asyncio.run(
+        st.ListSessionsTool().execute("q", {"owner": "alice", "session_id": "s1"})
+    )
     assert res == {"results": "ok"}
     assert seen == {"content": "q", "session_id": "s1", "owner": "alice"}
 
@@ -53,7 +61,9 @@ def test_manage_session_list_delegates_to_list_sessions(monkeypatch):
     # manage_session imports `Session` from src.database before the list branch;
     # the src.database test double may not expose it, so provide a stand-in.
     monkeypatch.setattr(database, "Session", object, raising=False)
-    monkeypatch.setattr(ai_interaction, "_session_manager", object())  # truthy: pass the guard
+    monkeypatch.setattr(
+        ai_interaction, "_session_manager", object()
+    )  # truthy: pass the guard
     res = asyncio.run(st.ManageSessionTool().execute("list", {"owner": "carol"}))
     assert called.get("owner") == "carol"
     assert res == {"results": "ok"}
@@ -62,7 +72,9 @@ def test_manage_session_list_delegates_to_list_sessions(monkeypatch):
 def test_create_session_reaches_uuid_and_creates(monkeypatch):
     # Regression for the missing `import uuid` (PR review): create_session must
     # get past _resolve_model and mint a session id without NameError.
-    monkeypatch.setattr(st, "_resolve_model", lambda spec, owner=None: ("http://x", "model-x", {}))
+    monkeypatch.setattr(
+        st, "_resolve_model", lambda spec, owner=None: ("http://x", "model-x", {})
+    )
     created = {}
 
     class FakeMgr:
@@ -73,7 +85,9 @@ def test_create_session_reaches_uuid_and_creates(monkeypatch):
             return None
 
     monkeypatch.setattr(ai_interaction, "_session_manager", FakeMgr())
-    res = asyncio.run(st.CreateSessionTool().execute("My Chat\nmodel-x", {"owner": "alice"}))
+    res = asyncio.run(
+        st.CreateSessionTool().execute("My Chat\nmodel-x", {"owner": "alice"})
+    )
     assert res.get("name") == "My Chat" and res.get("model") == "model-x"
     assert isinstance(res.get("session_id"), str) and res["session_id"]
     assert created.get("name") == "My Chat"  # the uuid-minted id reached the manager
@@ -116,13 +130,21 @@ def test_manage_session_fork_reaches_uuid(monkeypatch):
 
     class FakeMgr:
         def get_session(self, sid):
-            return Src() if sid == "abc" else type("S", (), {"add_message": lambda self, m: None})()
+            return (
+                Src()
+                if sid == "abc"
+                else type("S", (), {"add_message": lambda self, m: None})()
+            )
 
         def create_session(self, **kw):
             created.update(kw)
 
     monkeypatch.setattr(ai_interaction, "_session_manager", FakeMgr())
-    res = asyncio.run(st.ManageSessionTool().execute('{"action":"fork","session_id":"abc"}', {"owner": "owner"}))
+    res = asyncio.run(
+        st.ManageSessionTool().execute(
+            '{"action":"fork","session_id":"abc"}', {"owner": "owner"}
+        )
+    )
     assert res.get("action") == "fork"
     assert isinstance(res.get("session_id"), str) and res["session_id"]
     assert created.get("name") == "Fork: Orig"  # uuid-minted new session was created
@@ -138,12 +160,19 @@ def test_no_session_manager_is_handled(monkeypatch):
 
 
 def test_dispatched_via_registry_not_dispatch_ai_tool():
-    source = (Path(__file__).resolve().parent.parent / "src" / "tool_execution.py").read_text(encoding="utf-8")
-    assert 'elif tool in ("create_session", "list_sessions", "send_to_session", "manage_session"):' in source
+    source = (
+        Path(__file__).resolve().parent.parent / "src" / "tool_execution.py"
+    ).read_text(encoding="utf-8")
+    assert (
+        'elif tool in ("create_session", "list_sessions", "send_to_session", "manage_session"):'
+        in source
+    )
 
     marker = "from src.ai_interaction import dispatch_ai_tool"
     idx = source.index(marker)
     branch_head = source.rfind("elif tool in (", 0, idx)
     legacy_tuple = source[branch_head:idx]
     for name in _SESSION_TOOLS:
-        assert f'"{name}"' not in legacy_tuple, f"{name} still routed via dispatch_ai_tool"
+        assert f'"{name}"' not in legacy_tuple, (
+            f"{name} still routed via dispatch_ai_tool"
+        )

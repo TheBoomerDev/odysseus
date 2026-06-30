@@ -4,9 +4,9 @@ Covers:
   (a) Large JSON list response -> sentinel appended, valid JSON returned
   (b) Small response -> returned unchanged, no truncation
 """
+
 import json
 import sys
-import os
 import types
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -110,7 +110,10 @@ async def _call_with_integration(integration, path="/items"):
 
 @pytest.mark.asyncio
 async def test_api_call_rejects_stored_base_url_with_query_without_requesting():
-    integration = {**DUMMY_INTEGRATION, "base_url": "http://api.example.com/api?token=abc"}
+    integration = {
+        **DUMMY_INTEGRATION,
+        "base_url": "http://api.example.com/api?token=abc",
+    }
     result, mock_client = await _call_with_integration(integration)
 
     assert result == {
@@ -135,7 +138,9 @@ async def test_api_call_joins_path_under_configured_base_path():
 
 @pytest.mark.asyncio
 async def test_api_call_rejects_path_fragment_without_requesting():
-    result, mock_client = await _call_with_integration(DUMMY_INTEGRATION, "/items#fragment")
+    result, mock_client = await _call_with_integration(
+        DUMMY_INTEGRATION, "/items#fragment"
+    )
 
     assert result == {"error": "Path must not contain a fragment", "exit_code": 1}
     mock_client.request.assert_not_called()
@@ -176,9 +181,7 @@ async def test_small_json_list_not_truncated():
     parsed = json.loads(body)
     assert parsed == small_list
     # No sentinel in a short response
-    assert not any(
-        isinstance(item, dict) and item.get("_truncated") for item in parsed
-    )
+    assert not any(isinstance(item, dict) and item.get("_truncated") for item in parsed)
 
 
 @pytest.mark.asyncio

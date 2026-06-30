@@ -28,7 +28,9 @@ def test_embedding_400_batch_retry_falls_back_to_single_inputs(monkeypatch):
         text = texts[0]
         return 200, {"data": [{"index": 0, "embedding": [float(len(text)), 1.0]}]}
 
-    client = EmbeddingClient(url="http://embeddings.test/v1/embeddings", model="embed-test")
+    client = EmbeddingClient(
+        url="http://embeddings.test/v1/embeddings", model="embed-test"
+    )
     client._client = _FakeEmbeddingHttpClient(handler)
 
     vecs = client.encode(["a", "bbbb"], normalize_embeddings=False)
@@ -48,7 +50,9 @@ def test_embedding_400_single_input_retries_with_truncated_text(monkeypatch):
             return 400, {"error": "context length exceeded"}
         return 200, {"data": [{"index": 0, "embedding": [2.0, 0.0]}]}
 
-    client = EmbeddingClient(url="http://embeddings.test/v1/embeddings", model="embed-test")
+    client = EmbeddingClient(
+        url="http://embeddings.test/v1/embeddings", model="embed-test"
+    )
     client._client = _FakeEmbeddingHttpClient(handler)
 
     vecs = client.encode(["x" * 250], normalize_embeddings=False)
@@ -65,7 +69,9 @@ def test_embedding_non_400_errors_are_not_retried_or_swallowed():
         calls += 1
         return 500, {"error": "server error"}
 
-    client = EmbeddingClient(url="http://embeddings.test/v1/embeddings", model="embed-test")
+    client = EmbeddingClient(
+        url="http://embeddings.test/v1/embeddings", model="embed-test"
+    )
     client._client = _FakeEmbeddingHttpClient(handler)
 
     with pytest.raises(httpx.HTTPStatusError):

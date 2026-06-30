@@ -71,7 +71,11 @@ def test_parses_file_lists_as_dicts_and_strings():
             {
                 "number": 1,
                 "title": "Memory update",
-                "files": ["core/memory.py", {"path": "tests/test_memory.py"}, {"filename": "docs/memory.md"}],
+                "files": [
+                    "core/memory.py",
+                    {"path": "tests/test_memory.py"},
+                    {"filename": "docs/memory.md"},
+                ],
             }
         ]
     )
@@ -95,7 +99,11 @@ def test_fetch_live_prs_fills_missing_files(monkeypatch):
         calls.append(cmd)
         if cmd[:3] == ["gh", "pr", "list"]:
             return [
-                {"number": 1, "title": "Has files", "files": [{"path": "core/auth.py"}]},
+                {
+                    "number": 1,
+                    "title": "Has files",
+                    "files": [{"path": "core/auth.py"}],
+                },
                 {"number": 2, "title": "Needs files", "files": []},
             ]
         return [{"filename": "core/search.py"}, {"filename": "tests/test_search.py"}]
@@ -105,8 +113,16 @@ def test_fetch_live_prs_fills_missing_files(monkeypatch):
     payload = audit.fetch_live_prs("owner/repo")
     prs = audit.normalize_prs(payload)
 
-    assert [pr.files for pr in prs] == [("core/auth.py",), ("core/search.py", "tests/test_search.py")]
-    assert calls[-1] == ["gh", "api", "--paginate", "repos/owner/repo/pulls/2/files?per_page=100"]
+    assert [pr.files for pr in prs] == [
+        ("core/auth.py",),
+        ("core/search.py", "tests/test_search.py"),
+    ]
+    assert calls[-1] == [
+        "gh",
+        "api",
+        "--paginate",
+        "repos/owner/repo/pulls/2/files?per_page=100",
+    ]
 
 
 def test_fetch_live_prs_keeps_missing_files_when_per_pr_fetch_fails(monkeypatch):
@@ -181,7 +197,10 @@ def test_no_fetch_files_omits_files_from_gh_pr_list(monkeypatch):
 
     audit.fetch_live_prs("owner/repo", fetch_files=False, limit=50)
 
-    assert calls[0][-1] == "number,title,author,mergeStateStatus,reviewDecision,updatedAt,url"
+    assert (
+        calls[0][-1]
+        == "number,title,author,mergeStateStatus,reviewDecision,updatedAt,url"
+    )
 
 
 def test_fetch_live_prs_caps_rest_fallback_by_limit(monkeypatch):
@@ -252,7 +271,9 @@ def test_progress_goes_to_stderr_not_stdout(monkeypatch, capsys):
 
     monkeypatch.setattr(audit, "_run_gh_json", fake_run)
 
-    exit_code = audit.main(["--repo", "owner/repo", "--format", "terminal", "--progress", "always"])
+    exit_code = audit.main(
+        ["--repo", "owner/repo", "--format", "terminal", "--progress", "always"]
+    )
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -265,7 +286,9 @@ def test_progress_goes_to_stderr_not_stdout(monkeypatch, capsys):
 def test_progress_not_shown_for_offline_input(tmp_path, capsys):
     audit = load_module()
     path = tmp_path / "prs.json"
-    path.write_text(json.dumps([{"number": 6, "title": "Offline", "files": []}]), encoding="utf-8")
+    path.write_text(
+        json.dumps([{"number": 6, "title": "Offline", "files": []}]), encoding="utf-8"
+    )
 
     exit_code = audit.main(["--input", str(path), "--progress", "always"])
     captured = capsys.readouterr()
@@ -339,7 +362,9 @@ def test_report_output_remains_clean_with_progress(monkeypatch, capsys):
 
     monkeypatch.setattr(audit, "_run_gh_json", fake_run)
 
-    exit_code = audit.main(["--repo", "owner/repo", "--format", "terminal", "--progress", "always"])
+    exit_code = audit.main(
+        ["--repo", "owner/repo", "--format", "terminal", "--progress", "always"]
+    )
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -359,7 +384,9 @@ def test_markdown_output_file_has_no_progress_or_ansi(monkeypatch, tmp_path, cap
 
     monkeypatch.setattr(audit, "_run_gh_json", fake_run)
 
-    exit_code = audit.main(["--repo", "owner/repo", "--output", str(output_path), "--progress", "always"])
+    exit_code = audit.main(
+        ["--repo", "owner/repo", "--output", str(output_path), "--progress", "always"]
+    )
     captured = capsys.readouterr()
     report = output_path.read_text(encoding="utf-8")
 
@@ -380,7 +407,9 @@ def test_no_fetch_files_skips_progress(monkeypatch, capsys):
 
     monkeypatch.setattr(audit, "_run_gh_json", fake_run)
 
-    exit_code = audit.main(["--repo", "owner/repo", "--no-fetch-files", "--progress", "always"])
+    exit_code = audit.main(
+        ["--repo", "owner/repo", "--no-fetch-files", "--progress", "always"]
+    )
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -391,7 +420,9 @@ def test_no_fetch_files_skips_progress(monkeypatch, capsys):
 def test_area_classification():
     audit = load_module()
 
-    areas = audit.classify_areas(["scripts/odysseus-mail", "tests/test_email.py"], "CalDAV sync")
+    areas = audit.classify_areas(
+        ["scripts/odysseus-mail", "tests/test_email.py"], "CalDAV sync"
+    )
 
     assert "Email / CalDAV" in areas
     assert "Docs / tooling / tests" in areas
@@ -400,7 +431,9 @@ def test_area_classification():
 def test_runtime_plus_test_file_is_not_docs_tooling():
     audit = load_module()
 
-    areas = audit.classify_areas(["routes/memory_routes.py", "tests/test_memory_routes.py"], "Fix memory route")
+    areas = audit.classify_areas(
+        ["routes/memory_routes.py", "tests/test_memory_routes.py"], "Fix memory route"
+    )
 
     assert "Memory / RAG / vector store" in areas
     assert "Docs / tooling / tests" not in areas
@@ -417,7 +450,9 @@ def test_docs_only_pr_is_docs_tooling():
 def test_script_tooling_only_pr_is_docs_tooling():
     audit = load_module()
 
-    areas = audit.classify_areas(["scripts/pr_blocker_audit.py"], "Tooling script update")
+    areas = audit.classify_areas(
+        ["scripts/pr_blocker_audit.py"], "Tooling script update"
+    )
 
     assert "Docs / tooling / tests" in areas
 
@@ -470,7 +505,11 @@ def test_hot_file_overlap_detection():
     prs = audit.normalize_prs(
         [
             {"number": 1, "title": "A", "files": ["core/search.py"]},
-            {"number": 2, "title": "B", "files": ["core/search.py", "tests/test_search.py"]},
+            {
+                "number": 2,
+                "title": "B",
+                "files": ["core/search.py", "tests/test_search.py"],
+            },
             {"number": 3, "title": "C", "files": ["core/other.py"]},
         ]
     )
@@ -482,9 +521,21 @@ def test_possible_duplicate_grouping():
     audit = load_module()
     prs = audit.normalize_prs(
         [
-            {"number": 1, "title": "Fix auth token refresh", "files": ["core/auth.py", "tests/test_auth.py"]},
-            {"number": 2, "title": "Repair auth token refresh", "files": ["core/auth.py", "tests/test_auth.py"]},
-            {"number": 3, "title": "Improve gallery preview", "files": ["core/gallery.py"]},
+            {
+                "number": 1,
+                "title": "Fix auth token refresh",
+                "files": ["core/auth.py", "tests/test_auth.py"],
+            },
+            {
+                "number": 2,
+                "title": "Repair auth token refresh",
+                "files": ["core/auth.py", "tests/test_auth.py"],
+            },
+            {
+                "number": 3,
+                "title": "Improve gallery preview",
+                "files": ["core/gallery.py"],
+            },
         ]
     )
 
@@ -569,8 +620,12 @@ def test_dirty_state_is_caution_text_not_priority_boost():
         ]
     )[0]
 
-    dirty_score = audit.score_pr(dirty_memory, audit.Counter(), datetime(2026, 6, 3, tzinfo=timezone.utc))
-    clean_auth_score = audit.score_pr(clean_auth, audit.Counter(), datetime(2026, 6, 3, tzinfo=timezone.utc))
+    dirty_score = audit.score_pr(
+        dirty_memory, audit.Counter(), datetime(2026, 6, 3, tzinfo=timezone.utc)
+    )
+    clean_auth_score = audit.score_pr(
+        clean_auth, audit.Counter(), datetime(2026, 6, 3, tzinfo=timezone.utc)
+    )
 
     assert dirty_score.score < clean_auth_score.score
     assert any("caution: merge state DIRTY" == reason for reason in dirty_score.reasons)
@@ -578,7 +633,9 @@ def test_dirty_state_is_caution_text_not_priority_boost():
 
 def test_markdown_contains_expected_sections_and_no_ansi():
     audit = load_module()
-    prs = audit.normalize_prs([{"number": 1, "title": "Fix search", "files": ["core/search.py"]}])
+    prs = audit.normalize_prs(
+        [{"number": 1, "title": "Fix search", "files": ["core/search.py"]}]
+    )
 
     report = audit.render_markdown(prs)
 
@@ -611,7 +668,10 @@ def test_report_includes_missing_file_metadata_count():
 def test_overlap_summary_uses_hot_files_not_huge_clusters():
     audit = load_module()
     prs = audit.normalize_prs(
-        [{"number": number, "title": f"PR {number}", "files": ["common.py"]} for number in range(1, 25)]
+        [
+            {"number": number, "title": f"PR {number}", "files": ["common.py"]}
+            for number in range(1, 25)
+        ]
     )
 
     report = audit.render_terminal(prs, use_color=False)
@@ -624,7 +684,10 @@ def test_overlap_summary_uses_hot_files_not_huge_clusters():
 def test_long_pr_number_lists_are_truncated():
     audit = load_module()
 
-    assert audit._format_pr_numbers(range(1, 16), limit=4) == "#1, #2, #3, #4, ... (+11 more)"
+    assert (
+        audit._format_pr_numbers(range(1, 16), limit=4)
+        == "#1, #2, #3, #4, ... (+11 more)"
+    )
 
 
 def test_other_locked_area_sorts_after_classified_critical_area():
@@ -635,7 +698,9 @@ def test_other_locked_area_sorts_after_classified_critical_area():
         {"number": 3, "title": "Fix auth permission", "files": ["tests/test_auth.py"]},
         {"number": 4, "title": "Fix auth security", "files": ["docs/auth.md"]},
     ]
-    payload.extend({"number": number, "title": f"Unclassified {number}"} for number in range(5, 25))
+    payload.extend(
+        {"number": number, "title": f"Unclassified {number}"} for number in range(5, 25)
+    )
     prs = audit.normalize_prs(payload)
 
     locked = audit.locked_areas(prs, audit.score_prs(prs))
@@ -649,8 +714,18 @@ def test_terminal_render_color_modes():
     audit = load_module()
     prs = audit.normalize_prs(
         [
-            {"number": 1, "title": "Fix search", "mergeStateStatus": "CLEAN", "files": ["core/search.py"]},
-            {"number": 2, "title": "Search follow-up", "mergeStateStatus": "DIRTY", "files": ["core/search.py"]},
+            {
+                "number": 1,
+                "title": "Fix search",
+                "mergeStateStatus": "CLEAN",
+                "files": ["core/search.py"],
+            },
+            {
+                "number": 2,
+                "title": "Search follow-up",
+                "mergeStateStatus": "DIRTY",
+                "files": ["core/search.py"],
+            },
         ]
     )
 
@@ -660,7 +735,10 @@ def test_terminal_render_color_modes():
     assert "Hot files" in plain
     assert "core/search.py" in plain
     assert "Review / blocker priorities" in plain
-    assert "Heuristic score only; inspect these first, do not merge without validation." in plain
+    assert (
+        "Heuristic score only; inspect these first, do not merge without validation."
+        in plain
+    )
     assert re.search(r"\x1b\[[0-9;]*m", colored)
     assert not re.search(r"\x1b\[[0-9;]*m", plain)
 
@@ -685,7 +763,9 @@ def test_terminal_hot_files_respects_top():
 def test_terminal_truncates_long_title_but_markdown_keeps_it():
     audit = load_module()
     long_title = "Fix search " + "very-long-detail " * 12
-    prs = audit.normalize_prs([{"number": 1, "title": long_title, "files": ["core/search.py"]}])
+    prs = audit.normalize_prs(
+        [{"number": 1, "title": long_title, "files": ["core/search.py"]}]
+    )
 
     terminal = audit.render_terminal(prs, use_color=False)
     markdown = audit.render_markdown(prs)
@@ -699,9 +779,14 @@ def test_terminal_truncates_long_title_but_markdown_keeps_it():
 def test_cli_terminal_color_always_outputs_ansi(tmp_path, capsys):
     audit = load_module()
     path = tmp_path / "prs.json"
-    path.write_text(json.dumps([{"number": 1, "title": "Fix search", "files": ["core/search.py"]}]), encoding="utf-8")
+    path.write_text(
+        json.dumps([{"number": 1, "title": "Fix search", "files": ["core/search.py"]}]),
+        encoding="utf-8",
+    )
 
-    exit_code = audit.main(["--format", "terminal", "--color", "always", "--input", str(path)])
+    exit_code = audit.main(
+        ["--format", "terminal", "--color", "always", "--input", str(path)]
+    )
     output = capsys.readouterr().out
 
     assert exit_code == 0
@@ -711,7 +796,10 @@ def test_cli_terminal_color_always_outputs_ansi(tmp_path, capsys):
 def test_cli_terminal_no_color_outputs_no_ansi(tmp_path, capsys):
     audit = load_module()
     path = tmp_path / "prs.json"
-    path.write_text(json.dumps([{"number": 1, "title": "Fix search", "files": ["core/search.py"]}]), encoding="utf-8")
+    path.write_text(
+        json.dumps([{"number": 1, "title": "Fix search", "files": ["core/search.py"]}]),
+        encoding="utf-8",
+    )
 
     exit_code = audit.main(["--format", "terminal", "--no-color", "--input", str(path)])
     output = capsys.readouterr().out
@@ -738,8 +826,12 @@ def test_color_output_file_and_markdown_disable_ansi(monkeypatch):
     monkeypatch.setattr(audit.sys.stdout, "isatty", lambda: True)
     monkeypatch.setitem(audit.os.environ, "TERM", "xterm-256color")
 
-    output_args = audit.argparse.Namespace(format="terminal", color="auto", output="report.txt")
-    markdown_args = audit.argparse.Namespace(format="markdown", color="always", output=None)
+    output_args = audit.argparse.Namespace(
+        format="terminal", color="auto", output="report.txt"
+    )
+    markdown_args = audit.argparse.Namespace(
+        format="markdown", color="always", output=None
+    )
 
     assert not audit.should_use_color(output_args)
     assert not audit.should_use_color(markdown_args)
@@ -857,7 +949,16 @@ def test_json_review_priorities_structure(tmp_path, capsys):
     priorities = json.loads(output)["review_priorities"]
     assert len(priorities) >= 1
     first = priorities[0]
-    assert set(first.keys()) >= {"rank", "number", "score", "title", "url", "merge_state", "review_decision", "reasons"}
+    assert set(first.keys()) >= {
+        "rank",
+        "number",
+        "score",
+        "title",
+        "url",
+        "merge_state",
+        "review_decision",
+        "reasons",
+    }
     assert first["rank"] == 1
     assert isinstance(first["reasons"], list)
 
@@ -878,7 +979,9 @@ def test_json_hot_files_structure(tmp_path, capsys):
     assert set(hot[0]["pr_numbers"]) == {1, 2}
 
 
-def test_json_output_file_excludes_progress_and_ansi_in_live_output_file(monkeypatch, tmp_path, capsys):
+def test_json_output_file_excludes_progress_and_ansi_in_live_output_file(
+    monkeypatch, tmp_path, capsys
+):
     audit = load_module()
     output_path = tmp_path / "report.json"
 
@@ -890,14 +993,26 @@ def test_json_output_file_excludes_progress_and_ansi_in_live_output_file(monkeyp
     monkeypatch.setattr(audit, "_run_gh_json", fake_run)
 
     exit_code = audit.main(
-        ["--repo", "owner/repo", "--format", "json", "--output", str(output_path), "--progress", "always"]
+        [
+            "--repo",
+            "owner/repo",
+            "--format",
+            "json",
+            "--output",
+            str(output_path),
+            "--progress",
+            "always",
+        ]
     )
     captured = capsys.readouterr()
     report = output_path.read_text(encoding="utf-8")
 
     assert exit_code == 0
     assert captured.out == ""
-    assert "Fetching open PR list..." in captured.err or "Fetching changed files" in captured.err
+    assert (
+        "Fetching open PR list..." in captured.err
+        or "Fetching changed files" in captured.err
+    )
     parsed = json.loads(report)
     assert set(parsed.keys()) == {
         "summary",
@@ -916,7 +1031,9 @@ def test_json_format_with_color_always_emits_no_ansi(tmp_path, capsys):
     path = tmp_path / "prs.json"
     path.write_text(json.dumps(JSON_PRS), encoding="utf-8")
 
-    exit_code = audit.main(["--input", str(path), "--format", "json", "--color", "always"])
+    exit_code = audit.main(
+        ["--input", str(path), "--format", "json", "--color", "always"]
+    )
     output = capsys.readouterr().out
 
     assert exit_code == 0

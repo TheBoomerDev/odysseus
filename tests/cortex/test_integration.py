@@ -3,7 +3,7 @@ Tests for cortex/integration.py — puente entre CORTEX y Odysseus core.
 
 Tests: chat routing, goal→scheduling, SDD con LLM, heartbeat WebSocket.
 """
-import pytest
+
 from cortex.integration import route_chat_message, route_model_for_session
 
 
@@ -69,7 +69,12 @@ class TestChatRouting:
 class TestHeartbeatIntegration:
     def test_ws_registration(self):
         """WS client registration works."""
-        from cortex.integration import register_ws_client, unregister_ws_client, _ws_clients
+        from cortex.integration import (
+            register_ws_client,
+            unregister_ws_client,
+            _ws_clients,
+        )
+
         # Register
         register_ws_client("test-session", "mock-ws")
         assert "test-session" in _ws_clients
@@ -82,6 +87,7 @@ class TestSDDIntegration:
     def test_generate_sdd_with_odysseus_llm(self):
         """SDD generation via integration layer."""
         from cortex.integration import generate_sdd_with_odysseus_llm
+
         result = generate_sdd_with_odysseus_llm("int-test", "build a CLI tool")
         assert result["goal_id"] == "int-test"
         assert "documents_path" in result

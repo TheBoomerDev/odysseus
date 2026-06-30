@@ -14,6 +14,7 @@ constants, so they would fail on the pre-fix code (empty domains -> low-signal -
 no api_call). They skip locally when the agent's heavy deps (httpx/embeddings)
 are absent, and run in CI where they are installed.
 """
+
 import pytest
 
 agent_loop = pytest.importorskip("src.agent_loop")
@@ -59,7 +60,9 @@ def test_repro_selects_and_sends_api_call_schema():
     selected = _selected_tools(intent["domains"])
     assert "api_call" in selected, selected
     # The schema filter must actually advertise api_call to the model.
-    assert "api_call" in _schema_names_sent(selected), "api_call schema must reach the model"
+    assert "api_call" in _schema_names_sent(selected), (
+        "api_call schema must reach the model"
+    )
 
 
 def test_integrations_domain_has_a_rule_pack():

@@ -1,4 +1,5 @@
 """Tests for the code-navigation tools (grep, glob, ls) + read_file line range."""
+
 import os
 import shutil
 import asyncio
@@ -41,6 +42,7 @@ def repo():
 
 # ── grep ──────────────────────────────────────────────────────────────────
 
+
 def test_grep_finds_match(repo):
     r = _run("grep", f'{{"pattern": "needle", "path": "{repo}"}}')
     assert r["exit_code"] == 0
@@ -59,7 +61,10 @@ def test_grep_ignore_case(repo):
 
 
 def test_grep_glob_filter(repo):
-    r = _run("grep", f'{{"pattern": "needle", "ignore_case": true, "glob": "*.py", "path": "{repo}"}}')
+    r = _run(
+        "grep",
+        f'{{"pattern": "needle", "ignore_case": true, "glob": "*.py", "path": "{repo}"}}',
+    )
     assert "a.py" in r["output"]
     assert "b.txt" not in r["output"]
 
@@ -92,6 +97,7 @@ def test_grep_python_fallback_when_no_rg(repo, monkeypatch):
 
 
 # ── glob ──────────────────────────────────────────────────────────────────
+
 
 def test_glob_py(repo):
     r = _run("glob", f'{{"pattern": "*.py", "path": "{repo}"}}')
@@ -143,6 +149,7 @@ def test_glob_double_star_matches_deep(repo):
 
 # ── ls ────────────────────────────────────────────────────────────────────
 
+
 def test_ls_lists_entries(repo):
     r = _run("ls", f'{{"path": "{repo}"}}')
     assert r["exit_code"] == 0
@@ -158,6 +165,7 @@ def test_ls_path_outside_rejected(repo):
 
 
 # ── read_file line range ───────────────────────────────────────────────────
+
 
 def test_read_file_offset_limit(repo):
     p = os.path.join(repo, "lines.txt")

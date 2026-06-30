@@ -35,10 +35,13 @@ def test_model_listing_and_image_fallback_are_owner_scoped():
 # and no longer route through dispatch_ai_tool; their owner threading is covered
 # by tests/test_model_interaction_registry.py. The remaining model-ish tools
 # still dispatched here:
-@pytest.mark.parametrize("tool,content", [
-    ("pipeline", "gpt-test | summarize this"),
-    ("ui_control", "switch_model gpt-test"),
-])
+@pytest.mark.parametrize(
+    "tool,content",
+    [
+        ("pipeline", "gpt-test | summarize this"),
+        ("ui_control", "switch_model gpt-test"),
+    ],
+)
 async def test_dispatch_passes_owner_to_model_tools(monkeypatch, tool, content):
     seen = {}
 
@@ -49,15 +52,21 @@ async def test_dispatch_passes_owner_to_model_tools(monkeypatch, tool, content):
     monkeypatch.setattr(
         ai_interaction,
         "do_pipeline",
-        lambda content, session_id=None, owner=None: capture("pipeline", content, session_id, owner),
+        lambda content, session_id=None, owner=None: capture(
+            "pipeline", content, session_id, owner
+        ),
     )
     monkeypatch.setattr(
         ai_interaction,
         "do_ui_control",
-        lambda content, session_id=None, owner=None: capture("ui_control", content, session_id, owner),
+        lambda content, session_id=None, owner=None: capture(
+            "ui_control", content, session_id, owner
+        ),
     )
 
-    _desc, result = await ai_interaction.dispatch_ai_tool(tool, content, session_id="sid1", owner="alice")
+    _desc, result = await ai_interaction.dispatch_ai_tool(
+        tool, content, session_id="sid1", owner="alice"
+    )
 
     assert result == {"ok": True}
     assert seen[tool]["owner"] == "alice"

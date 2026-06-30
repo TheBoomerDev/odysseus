@@ -77,7 +77,9 @@ def test_dav_client_does_not_follow_redirect_to_internal_host():
             pass
         # The request must actually have left the building — otherwise an early
         # error would make "sink not hit" pass vacuously.
-        assert public_methods == ["PROPFIND"], "the PROPFIND must reach the public server first"
+        assert public_methods == ["PROPFIND"], (
+            "the PROPFIND must reach the public server first"
+        )
         assert sink_hits == [], "redirect toward an internal host must not be followed"
     finally:
         internal.shutdown()
@@ -88,8 +90,8 @@ def test_sync_and_writeback_construct_clients_through_the_helper():
     """Guard against a raw DAVClient (redirects enabled) creeping back in.
     Every DAVClient on the sync/write-back paths must go through
     ``_build_dav_client`` so the redirect protection can't be bypassed."""
-    sync_src = (caldav_sync.__file__)
-    wb_src = (caldav_writeback.__file__)
+    sync_src = caldav_sync.__file__
+    wb_src = caldav_writeback.__file__
     with open(sync_src, encoding="utf-8") as f:
         sync_text = f.read()
     with open(wb_src, encoding="utf-8") as f:

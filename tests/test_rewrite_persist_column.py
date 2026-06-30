@@ -7,11 +7,11 @@ and since session_manager.save_sessions() is a no-op this DB UPDATE was the
 only persistence path. The rewrite was shown live but silently lost on
 reload.
 """
+
 import tempfile
 import uuid
 from datetime import datetime, timedelta
 
-import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
@@ -28,7 +28,11 @@ def test_chatmessage_has_timestamp_not_created_at():
 
 def test_rewrite_query_selects_and_updates_latest_assistant_message():
     tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-    engine = create_engine(f"sqlite:///{tmp.name}", connect_args={"check_same_thread": False}, poolclass=NullPool)
+    engine = create_engine(
+        f"sqlite:///{tmp.name}",
+        connect_args={"check_same_thread": False},
+        poolclass=NullPool,
+    )
     cdb.Base.metadata.create_all(engine)
     TS = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
@@ -36,16 +40,34 @@ def test_rewrite_query_selects_and_updates_latest_assistant_message():
     base = datetime(2026, 6, 3, 12, 0, 0)
     db = TS()
     try:
-        db.add(DbSession(
-            id=sid,
-            owner="alice",
-            name="c",
-            model="m",
-            endpoint_url="http://localhost:11434",
-            archived=False,
-        ))
-        db.add(DBChatMessage(id="m1", session_id=sid, role="assistant", content="old first", timestamp=base))
-        db.add(DBChatMessage(id="m2", session_id=sid, role="assistant", content="old latest", timestamp=base + timedelta(minutes=1)))
+        db.add(
+            DbSession(
+                id=sid,
+                owner="alice",
+                name="c",
+                model="m",
+                endpoint_url="http://localhost:11434",
+                archived=False,
+            )
+        )
+        db.add(
+            DBChatMessage(
+                id="m1",
+                session_id=sid,
+                role="assistant",
+                content="old first",
+                timestamp=base,
+            )
+        )
+        db.add(
+            DBChatMessage(
+                id="m2",
+                session_id=sid,
+                role="assistant",
+                content="old latest",
+                timestamp=base + timedelta(minutes=1),
+            )
+        )
         db.commit()
     finally:
         db.close()

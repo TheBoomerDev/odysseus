@@ -62,7 +62,11 @@ def test_copilot_success_uses_complete_verification_uri():
     assert out["result"]["status"] == "authorized"
     assert out["result"]["endpoint"]["id"] == "ep1"
     assert out["opened"] == ["https://github.com/login/device?user_code=GH-CODE"]
-    assert out["calls"] == ["/api/copilot/device/start", "/api/copilot/device/poll", "/api/copilot/device/poll"]
+    assert out["calls"] == [
+        "/api/copilot/device/start",
+        "/api/copilot/device/poll",
+        "/api/copilot/device/poll",
+    ]
 
 
 def test_chatgpt_success_uses_plain_verification_uri():

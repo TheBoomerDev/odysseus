@@ -11,7 +11,6 @@ Pattern under test (multi-tenant deploy):
   or whose owner is "bob".
 """
 
-import os
 import sys
 import types
 import pytest
@@ -19,6 +18,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from tests.helpers.calendar_routes import import_calendar_routes
+
 
 # `tests/conftest.py` stubs the heavy optional deps. We additionally
 # stub `core.database` here because the real module instantiates
@@ -29,12 +29,27 @@ from tests.helpers.calendar_routes import import_calendar_routes
 @pytest.fixture(autouse=True)
 def _null_owner_stubs(monkeypatch):
     for _stub, _attrs in (
-        ("core.database", (
-            "Base", "SessionLocal", "CalendarCal", "CalendarDeletedEvent", "CalendarEvent",
-            "Document", "DocumentVersion", "Session", "ChatMessage",
-            "GalleryImage", "GalleryAlbum", "Note", "ScheduledTask",
-            "TaskRun", "ModelEndpoint", "Webhook",
-        )),
+        (
+            "core.database",
+            (
+                "Base",
+                "SessionLocal",
+                "CalendarCal",
+                "CalendarDeletedEvent",
+                "CalendarEvent",
+                "Document",
+                "DocumentVersion",
+                "Session",
+                "ChatMessage",
+                "GalleryImage",
+                "GalleryAlbum",
+                "Note",
+                "ScheduledTask",
+                "TaskRun",
+                "ModelEndpoint",
+                "Webhook",
+            ),
+        ),
         ("core.auth", ("AuthManager",)),
         ("src.endpoint_resolver", ()),
     ):
@@ -59,12 +74,14 @@ def _null_owner_stubs(monkeypatch):
         sys.modules["src.webhook_manager"] = wm
         monkeypatch.setitem(sys.modules, "src.webhook_manager", wm)
 
+
 from fastapi import HTTPException
 
 
 # ---------------------------------------------------------------------------
 # calendar._get_or_404_calendar / _get_or_404_event
 # ---------------------------------------------------------------------------
+
 
 def test_calendar_gate_rejects_null_owner_for_authenticated_user():
     cal_mod = import_calendar_routes()
@@ -121,8 +138,10 @@ def test_calendar_event_gate_rejects_cross_owner():
 # document._owner_session_filter
 # ---------------------------------------------------------------------------
 
+
 def test_document_owner_filter_rejects_anonymous():
     from routes.document_routes import _owner_session_filter
+
     fake_q = MagicMock()
     out = _owner_session_filter(fake_q, user=None)
     # The fix should call .filter(False) — fake_q.filter was invoked once
@@ -133,6 +152,7 @@ def test_document_owner_filter_rejects_anonymous():
 
 def test_document_owner_filter_applies_owner_clause():
     from routes.document_routes import _owner_session_filter
+
     fake_q = MagicMock()
     out = _owner_session_filter(fake_q, user="alice")
     fake_q.filter.assert_called_once()  # one strict filter call
@@ -143,9 +163,11 @@ def test_document_owner_filter_applies_owner_clause():
 # gallery._owner_filter
 # ---------------------------------------------------------------------------
 
+
 def test_gallery_owner_filter_blocks_anonymous(monkeypatch):
     monkeypatch.setenv("AUTH_ENABLED", "true")
     from routes.gallery_routes import _owner_filter
+
     fake_q = MagicMock()
     out = _owner_filter(fake_q, user=None)
     fake_q.filter.assert_called_once_with(False)
@@ -155,6 +177,7 @@ def test_gallery_owner_filter_blocks_anonymous(monkeypatch):
 def test_gallery_owner_filter_allows_single_user_mode(monkeypatch):
     monkeypatch.setenv("AUTH_ENABLED", "false")
     from routes.gallery_routes import _owner_filter
+
     fake_q = MagicMock()
     out = _owner_filter(fake_q, user=None)
     fake_q.filter.assert_not_called()
@@ -163,6 +186,7 @@ def test_gallery_owner_filter_allows_single_user_mode(monkeypatch):
 
 def test_gallery_owner_filter_passes_user():
     from routes.gallery_routes import _owner_filter
+
     fake_q = MagicMock()
     out = _owner_filter(fake_q, user="alice")
     # Under the SQLAlchemy MagicMock stubs we can't introspect the
@@ -183,13 +207,12 @@ def test_gallery_owner_filter_passes_user():
 # owner's endpoint credentials. The gate must fail closed, exactly like the
 # calendar/notes/gallery gates above and _verify_session_owner.
 
+
 def _import_webhook_helper():
     """Import routes.webhook_routes. Stubs for core.database (ChatMessage,
     Webhook) and src.webhook_manager are provided by the _null_owner_stubs
     autouse fixture."""
-    return __import__(
-        "routes.webhook_routes", fromlist=["_caller_owns_session"]
-    )
+    return __import__("routes.webhook_routes", fromlist=["_caller_owns_session"])
 
 
 def test_sync_chat_gate_rejects_null_owner_session():
@@ -227,6 +250,7 @@ def test_sync_chat_gate_accepts_matching_owner():
 # internal base_url. The fallback must be owner-scoped (own rows + legacy
 # null-owner shared rows), exactly like routes/model_routes.py and
 # companion/routes.py.
+
 
 class _Predicate:
     def __init__(self, check):

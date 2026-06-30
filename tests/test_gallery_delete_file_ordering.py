@@ -7,6 +7,7 @@ stayed active but its file was already gone — a broken, unviewable image (data
 loss). The file is now removed only after the soft-delete commit succeeds, and
 best-effort so a missing/locked file can't fail an otherwise-successful delete.
 """
+
 import asyncio
 
 import pytest
@@ -21,7 +22,9 @@ import routes.gallery_routes as gallery_routes
 def _delete_endpoint():
     router = gallery_routes.setup_gallery_routes()
     for route in router.routes:
-        if getattr(route, "path", "") == "/api/gallery/{image_id}" and "DELETE" in getattr(route, "methods", set()):
+        if getattr(
+            route, "path", ""
+        ) == "/api/gallery/{image_id}" and "DELETE" in getattr(route, "methods", set()):
             return route.endpoint
     raise AssertionError("DELETE /api/gallery/{image_id} endpoint not found")
 
@@ -44,7 +47,9 @@ def test_file_kept_when_commit_fails(tmp_path, monkeypatch):
     SessionLocal = _seed(tmp_path)
     # GALLERY_IMAGE_DIR is an absolute path fixed at import, so a chdir can't
     # redirect the delete; point the resolver at the seeded tmp dir directly.
-    monkeypatch.setattr(gallery_routes, "GALLERY_IMAGE_DIR", tmp_path / "data" / "generated_images")
+    monkeypatch.setattr(
+        gallery_routes, "GALLERY_IMAGE_DIR", tmp_path / "data" / "generated_images"
+    )
     monkeypatch.setattr(gallery_routes, "get_current_user", lambda r: "alice")
 
     # A session whose commit always fails, to simulate a DB error mid-delete.
@@ -70,7 +75,9 @@ def test_file_kept_when_commit_fails(tmp_path, monkeypatch):
 
 def test_file_removed_on_successful_delete(tmp_path, monkeypatch):
     SessionLocal = _seed(tmp_path)
-    monkeypatch.setattr(gallery_routes, "GALLERY_IMAGE_DIR", tmp_path / "data" / "generated_images")
+    monkeypatch.setattr(
+        gallery_routes, "GALLERY_IMAGE_DIR", tmp_path / "data" / "generated_images"
+    )
     monkeypatch.setattr(gallery_routes, "get_current_user", lambda r: "alice")
     monkeypatch.setattr(gallery_routes, "SessionLocal", SessionLocal)
 

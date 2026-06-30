@@ -21,7 +21,9 @@ from src.auth_helpers import get_current_user
 logger = logging.getLogger(__name__)
 
 
-_DATA_URL_RE = re.compile(r"^data:image/png;base64,(?P<data>.+)$", re.IGNORECASE | re.DOTALL)
+_DATA_URL_RE = re.compile(
+    r"^data:image/png;base64,(?P<data>.+)$", re.IGNORECASE | re.DOTALL
+)
 _ANY_IMAGE_DATA_URL_RE = re.compile(r"^data:image/[^;]+;base64,", re.IGNORECASE)
 _PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 _MAX_SIGNATURE_BYTES = 2 * 1024 * 1024
@@ -99,7 +101,9 @@ def setup_signature_routes() -> APIRouter:
             db.close()
 
     @router.post("/api/signatures")
-    async def create_signature(request: Request, req: SignatureCreate) -> Dict[str, Any]:
+    async def create_signature(
+        request: Request, req: SignatureCreate
+    ) -> Dict[str, Any]:
         user = get_current_user(request)
         b64 = _normalize_signature_png(req.data)
         width = _signature_dimension(req.width)

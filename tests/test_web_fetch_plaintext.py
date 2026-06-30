@@ -6,7 +6,6 @@ so the HTML branch extracted nothing and web_fetch reported "no readable text
 content". The plain-text branch returns the body as-is. HTML stays on the
 parsing path.
 """
-import types
 
 import pytest
 
@@ -35,7 +34,9 @@ def _patch_fetch(monkeypatch, text, content_type):
     monkeypatch.setattr(
         content_mod,
         "_get_public_url",
-        lambda url, headers=None, timeout=5, **kwargs: _FakeResponse(text, content_type),
+        lambda url, headers=None, timeout=5, **kwargs: _FakeResponse(
+            text, content_type
+        ),
     )
 
 

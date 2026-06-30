@@ -8,6 +8,7 @@ Searches for skills from multiple sources:
 
 Each source is tried in order until results are found.
 """
+
 from __future__ import annotations
 
 import json
@@ -31,16 +32,66 @@ GITHUB_SEARCH_URL = "https://api.github.com/search/code?q=SKILL.md+repo:vercel-l
 
 # Static skill index (known working skills)
 _STATIC_SKILLS: List[Dict] = [
-    {"name": "python-backend", "description": "Python backend development patterns", "category": "dev", "tags": ["python", "backend"]},
-    {"name": "react-frontend", "description": "React frontend development patterns", "category": "dev", "tags": ["react", "frontend"]},
-    {"name": "docker-deployment", "description": "Docker deployment patterns", "category": "devops", "tags": ["docker", "deployment"]},
-    {"name": "database-design", "description": "Database design patterns", "category": "dev", "tags": ["database", "sql"]},
-    {"name": "testing-patterns", "description": "Testing patterns and best practices", "category": "dev", "tags": ["testing", "pytest"]},
-    {"name": "api-design", "description": "REST API design patterns", "category": "dev", "tags": ["api", "rest"]},
-    {"name": "security-hardening", "description": "Security hardening patterns", "category": "security", "tags": ["security", "hardening"]},
-    {"name": "code-review", "description": "Code review best practices", "category": "dev", "tags": ["code-review", "quality"]},
-    {"name": "cli-tools", "description": "CLI tool development patterns", "category": "dev", "tags": ["cli", "python"]},
-    {"name": "documentation", "description": "Documentation generation patterns", "category": "writing", "tags": ["docs", "markdown"]},
+    {
+        "name": "python-backend",
+        "description": "Python backend development patterns",
+        "category": "dev",
+        "tags": ["python", "backend"],
+    },
+    {
+        "name": "react-frontend",
+        "description": "React frontend development patterns",
+        "category": "dev",
+        "tags": ["react", "frontend"],
+    },
+    {
+        "name": "docker-deployment",
+        "description": "Docker deployment patterns",
+        "category": "devops",
+        "tags": ["docker", "deployment"],
+    },
+    {
+        "name": "database-design",
+        "description": "Database design patterns",
+        "category": "dev",
+        "tags": ["database", "sql"],
+    },
+    {
+        "name": "testing-patterns",
+        "description": "Testing patterns and best practices",
+        "category": "dev",
+        "tags": ["testing", "pytest"],
+    },
+    {
+        "name": "api-design",
+        "description": "REST API design patterns",
+        "category": "dev",
+        "tags": ["api", "rest"],
+    },
+    {
+        "name": "security-hardening",
+        "description": "Security hardening patterns",
+        "category": "security",
+        "tags": ["security", "hardening"],
+    },
+    {
+        "name": "code-review",
+        "description": "Code review best practices",
+        "category": "dev",
+        "tags": ["code-review", "quality"],
+    },
+    {
+        "name": "cli-tools",
+        "description": "CLI tool development patterns",
+        "category": "dev",
+        "tags": ["cli", "python"],
+    },
+    {
+        "name": "documentation",
+        "description": "Documentation generation patterns",
+        "category": "writing",
+        "tags": ["docs", "markdown"],
+    },
 ]
 
 
@@ -85,28 +136,40 @@ def _search_local_skills(query: str, limit: int = 20) -> List[Dict]:
                 content = skill_file.read_text(encoding="utf-8", errors="ignore")
                 # Extract name from frontmatter
                 name_match = re.search(r"^name:\s*(.+)$", content, re.MULTILINE)
-                name = name_match.group(1).strip() if name_match else skill_file.parent.name
+                name = (
+                    name_match.group(1).strip()
+                    if name_match
+                    else skill_file.parent.name
+                )
                 desc_match = re.search(r"^description:\s*(.+)$", content, re.MULTILINE)
                 desc = desc_match.group(1).strip() if desc_match else ""
 
                 # Extract category from path
                 rel_path = skill_file.relative_to(skills_dir)
-                category = rel_path.parent.name if rel_path.parent.name != "." else "general"
-                tags = [category, rel_path.parent.parent.name] if rel_path.parent.parent.name != "." else [category]
+                category = (
+                    rel_path.parent.name if rel_path.parent.name != "." else "general"
+                )
+                tags = (
+                    [category, rel_path.parent.parent.name]
+                    if rel_path.parent.parent.name != "."
+                    else [category]
+                )
 
                 # Match against query
                 search_text = f"{name} {desc} {category}".lower()
                 if query_lower in search_text:
-                    results.append({
-                        "name": name,
-                        "description": desc or f"Skill from {rel_path.parent}",
-                        "category": category,
-                        "tags": [t for t in tags if t],
-                        "platforms": ["hermes"],
-                        "installs": 1,
-                        "source": "local",
-                        "path": str(skill_file),
-                    })
+                    results.append(
+                        {
+                            "name": name,
+                            "description": desc or f"Skill from {rel_path.parent}",
+                            "category": category,
+                            "tags": [t for t in tags if t],
+                            "platforms": ["hermes"],
+                            "installs": 1,
+                            "source": "local",
+                            "path": str(skill_file),
+                        }
+                    )
                     if len(results) >= limit:
                         return results
             except Exception as e:
@@ -130,15 +193,19 @@ def _search_github(query: str, limit: int = 20) -> List[Dict]:
             path = item.get("path", "")
             repo = item.get("repository", {}).get("full_name", "")
             if query_lower in path.lower() or query_lower in name.lower():
-                results.append({
-                    "name": Path(path).stem,
-                    "description": f"From {repo}/{path}",
-                    "category": Path(path).parent.name if "/" in path else "general",
-                    "tags": [repo.split("/")[-1] if "/" in repo else ""],
-                    "platforms": ["github"],
-                    "installs": 0,
-                    "source": "github",
-                })
+                results.append(
+                    {
+                        "name": Path(path).stem,
+                        "description": f"From {repo}/{path}",
+                        "category": Path(path).parent.name
+                        if "/" in path
+                        else "general",
+                        "tags": [repo.split("/")[-1] if "/" in repo else ""],
+                        "platforms": ["github"],
+                        "installs": 0,
+                        "source": "github",
+                    }
+                )
                 if len(results) >= limit:
                     return results
 
@@ -150,7 +217,9 @@ def _search_static(query: str, limit: int = 20) -> List[Dict]:
     results = []
     query_lower = query.lower()
     for skill in _STATIC_SKILLS:
-        search_text = f"{skill['name']} {skill['description']} {' '.join(skill['tags'])}".lower()
+        search_text = (
+            f"{skill['name']} {skill['description']} {' '.join(skill['tags'])}".lower()
+        )
         if query_lower in search_text:
             results.append({**skill, "source": "index"})
             if len(results) >= limit:
@@ -200,7 +269,11 @@ def get_skill_markdown(name: str) -> Optional[str]:
             try:
                 content = skill_file.read_text(encoding="utf-8", errors="ignore")
                 name_match = re.search(r"^name:\s*(.+)$", content, re.MULTILINE)
-                skill_name = name_match.group(1).strip() if name_match else skill_file.parent.name
+                skill_name = (
+                    name_match.group(1).strip()
+                    if name_match
+                    else skill_file.parent.name
+                )
                 if skill_name.lower() == name.lower():
                     return content
             except Exception:
@@ -227,7 +300,7 @@ def install_skill(skills_manager: Any, name: str, owner: Optional[str] = None) -
     md_content = _ensure_frontmatter(md_content, name)
     try:
         skill = skills_manager.add_skill(md_content, source="imported", owner=owner)
-        return {"ok": True, "skill_id": skill.id if hasattr(skill, 'id') else name}
+        return {"ok": True, "skill_id": skill.id if hasattr(skill, "id") else name}
     except Exception as e:
         logger.exception("failed to install skill '%s'", name)
         return {"ok": False, "error": str(e)}

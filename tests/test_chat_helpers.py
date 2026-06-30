@@ -57,11 +57,13 @@ def test_allowed_models_explicit_empty_restricted_list_blocks_all_models(monkeyp
 
     with pytest.raises(HTTPException) as exc:
         _enforce_chat_privileges(
-            _Request({
-                "allowed_models": [],
-                "allowed_models_restricted": True,
-                "max_messages_per_day": 0,
-            }),
+            _Request(
+                {
+                    "allowed_models": [],
+                    "allowed_models_restricted": True,
+                    "max_messages_per_day": 0,
+                }
+            ),
             _Session("provider/model-a"),
         )
 
@@ -78,7 +80,9 @@ def test_allowed_models_nonempty_list_still_restricts_without_new_flag(monkeypat
     )
     with pytest.raises(HTTPException):
         _enforce_chat_privileges(
-            _Request({"allowed_models": ["provider/model-a"], "max_messages_per_day": 0}),
+            _Request(
+                {"allowed_models": ["provider/model-a"], "max_messages_per_day": 0}
+            ),
             _Session("provider/model-b"),
         )
 
@@ -173,7 +177,11 @@ class _ManifestUploadHandler:
 
 
 def _manifest_test_dir(name):
-    root = Path(__file__).resolve().parents[1] / "tmp_pytest_probe" / f"{name}-{uuid.uuid4().hex}"
+    root = (
+        Path(__file__).resolve().parents[1]
+        / "tmp_pytest_probe"
+        / f"{name}-{uuid.uuid4().hex}"
+    )
     root.mkdir(parents=True, exist_ok=False)
     return root
 
@@ -196,35 +204,38 @@ def test_build_uploaded_file_manifest_filters_and_nulls_unreadable_paths(monkeyp
             "get_setting",
             lambda key: [str(upload_dir)] if key == "tool_path_extra_roots" else None,
         )
-        handler = _ManifestUploadHandler(upload_dir, {
-            "good": {
-                "id": "good",
-                "name": "good.txt",
-                "mime": "text/plain",
-                "size": 5,
-                "path": str(good),
-                "owner": "alice",
+        handler = _ManifestUploadHandler(
+            upload_dir,
+            {
+                "good": {
+                    "id": "good",
+                    "name": "good.txt",
+                    "mime": "text/plain",
+                    "size": 5,
+                    "path": str(good),
+                    "owner": "alice",
+                },
+                "bob": {
+                    "id": "bob",
+                    "name": "bob.txt",
+                    "path": str(good),
+                    "owner": "bob",
+                },
+                "outside": {
+                    "id": "outside",
+                    "name": "outside.txt",
+                    "path": str(outside),
+                    "owner": "alice",
+                },
+                "missing": {
+                    "id": "missing",
+                    "name": "missing.txt",
+                    "path": str(missing),
+                    "owner": "alice",
+                },
+                "bad": ["not", "a", "dict"],
             },
-            "bob": {
-                "id": "bob",
-                "name": "bob.txt",
-                "path": str(good),
-                "owner": "bob",
-            },
-            "outside": {
-                "id": "outside",
-                "name": "outside.txt",
-                "path": str(outside),
-                "owner": "alice",
-            },
-            "missing": {
-                "id": "missing",
-                "name": "missing.txt",
-                "path": str(missing),
-                "owner": "alice",
-            },
-            "bad": ["not", "a", "dict"],
-        })
+        )
 
         manifest = build_uploaded_file_manifest(
             ["good", "bob", "outside", "missing", "bad"],
@@ -254,9 +265,17 @@ def test_build_uploaded_file_manifest_hides_paths_read_file_cannot_open(monkeypa
         upload_dir.mkdir()
         upload = upload_dir / "upload.txt"
         upload.write_text("hello", encoding="utf-8")
-        handler = _ManifestUploadHandler(upload_dir, {
-            "upload": {"id": "upload", "name": "upload.txt", "path": str(upload), "owner": "alice"},
-        })
+        handler = _ManifestUploadHandler(
+            upload_dir,
+            {
+                "upload": {
+                    "id": "upload",
+                    "name": "upload.txt",
+                    "path": str(upload),
+                    "owner": "alice",
+                },
+            },
+        )
 
         def reject_path(_path):
             raise ValueError("outside the allowed roots")
@@ -270,31 +289,33 @@ def test_build_uploaded_file_manifest_hides_paths_read_file_cannot_open(monkeypa
         shutil.rmtree(root, ignore_errors=True)
 
 
-@pytest.mark.parametrize("name,expected", [
-    # 24h format (the bug this PR fixes)
-    ("deepseek-v4-flash 14:05:33", True),
-    ("qwq 17:46:02", True),
-    ("gemma3 23:59:59", True),
-    ("claude-sonnet 4 0:00:00", True),
-
-    # 12h format (was already working)
-    ("deepseek-v4-flash 2:05:33 PM", True),
-    ("qwq 06:46:02 AM", True),
-    ("claude-sonnet-4 8:05:17 am", True),
-
-    # empty / default
-    ("", True),
-    ("  ", False),
-    ("Chat: something", True),
-
-    # custom titles – should NOT trigger auto-naming
-    ("custom title", False),
-    ("CW Decoder for STM32", False),
-    ("my chat about python", False),
-    ("Fix the login bug", False),
-])
+@pytest.mark.parametrize(
+    "name,expected",
+    [
+        # 24h format (the bug this PR fixes)
+        ("deepseek-v4-flash 14:05:33", True),
+        ("qwq 17:46:02", True),
+        ("gemma3 23:59:59", True),
+        ("claude-sonnet 4 0:00:00", True),
+        # 12h format (was already working)
+        ("deepseek-v4-flash 2:05:33 PM", True),
+        ("qwq 06:46:02 AM", True),
+        ("claude-sonnet-4 8:05:17 am", True),
+        # empty / default
+        ("", True),
+        ("  ", False),
+        ("Chat: something", True),
+        # custom titles – should NOT trigger auto-naming
+        ("custom title", False),
+        ("CW Decoder for STM32", False),
+        ("my chat about python", False),
+        ("Fix the login bug", False),
+    ],
+)
 def test_needs_auto_name(name, expected):
-    assert needs_auto_name(name) == expected, f"needs_auto_name({name!r}) should be {expected}"
+    assert needs_auto_name(name) == expected, (
+        f"needs_auto_name({name!r}) should be {expected}"
+    )
 
 
 def test_clean_thinking_for_save_extracts_gemma4_thought_channel():
@@ -361,10 +382,12 @@ class _SpinMsg:
 
 
 def test_spinoff_detected_from_chatmessage_history():
-    sess = SimpleNamespace(history=[
-        _SpinMsg("system", {"research_spinoff_from": "rp-1"}),
-        _SpinMsg("user", None),
-    ])
+    sess = SimpleNamespace(
+        history=[
+            _SpinMsg("system", {"research_spinoff_from": "rp-1"}),
+            _SpinMsg("user", None),
+        ]
+    )
     assert _session_is_research_spinoff(sess) is True
 
 
@@ -388,7 +411,9 @@ def test_auto_name_session_passes_session_fallback_to_task_resolver(monkeypatch)
         llm_calls.append((url, model, messages, kwargs))
         return "Focused Fix"
 
-    monkeypatch.setattr(task_endpoint, "resolve_task_endpoint", fake_resolve_task_endpoint)
+    monkeypatch.setattr(
+        task_endpoint, "resolve_task_endpoint", fake_resolve_task_endpoint
+    )
     monkeypatch.setattr(llm_core, "llm_call_async", fake_llm_call)
 
     session_headers = {"Authorization": "Bearer session"}
@@ -398,21 +423,29 @@ def test_auto_name_session_passes_session_fallback_to_task_resolver(monkeypatch)
         endpoint_url="http://session.example/v1/chat/completions",
         model="session-model",
         headers=session_headers,
-        history=[SimpleNamespace(role="user", content="Please fix the endpoint fallback bug.")],
+        history=[
+            SimpleNamespace(
+                role="user", content="Please fix the endpoint fallback bug."
+            )
+        ],
     )
     updates = []
     session_manager = SimpleNamespace(
-        update_session_name=lambda session_id, title: updates.append((session_id, title))
+        update_session_name=lambda session_id, title: updates.append(
+            (session_id, title)
+        )
     )
 
     asyncio.run(auto_name_session(session_manager, sess))
 
-    assert resolver_calls == [(
-        "http://session.example/v1/chat/completions",
-        "session-model",
-        session_headers,
-        "alice",
-    )]
+    assert resolver_calls == [
+        (
+            "http://session.example/v1/chat/completions",
+            "session-model",
+            session_headers,
+            "alice",
+        )
+    ]
     assert llm_calls[0][0] == "http://session.example/v1/chat/completions"
     assert llm_calls[0][1] == "session-model"
     assert llm_calls[0][3]["headers"] == session_headers
@@ -420,23 +453,29 @@ def test_auto_name_session_passes_session_fallback_to_task_resolver(monkeypatch)
 
 
 def test_spinoff_detected_from_dict_history():
-    sess = SimpleNamespace(history=[
-        {"role": "system", "metadata": {"research_spinoff_from": "rp-2"}},
-        {"role": "user", "content": "hi"},
-    ])
+    sess = SimpleNamespace(
+        history=[
+            {"role": "system", "metadata": {"research_spinoff_from": "rp-2"}},
+            {"role": "user", "content": "hi"},
+        ]
+    )
     assert _session_is_research_spinoff(sess) is True
 
 
 def test_non_spinoff_plain_session_is_false():
-    sess = SimpleNamespace(history=[
-        _SpinMsg("system", {"compacted": True}),
-        _SpinMsg("user", None),
-    ])
+    sess = SimpleNamespace(
+        history=[
+            _SpinMsg("system", {"compacted": True}),
+            _SpinMsg("user", None),
+        ]
+    )
     assert _session_is_research_spinoff(sess) is False
 
 
 def test_metadata_on_non_system_message_ignored():
-    sess = SimpleNamespace(history=[_SpinMsg("user", {"research_spinoff_from": "rp-3"})])
+    sess = SimpleNamespace(
+        history=[_SpinMsg("user", {"research_spinoff_from": "rp-3"})]
+    )
     assert _session_is_research_spinoff(sess) is False
 
 
@@ -480,7 +519,9 @@ async def _build_context_owner_probe(monkeypatch, request_state):
         captured["preface_owner"] = kwargs["owner"]
         return [], [], []
 
-    async def fake_maybe_compact(sess, endpoint_url, model, messages, headers, owner=None):
+    async def fake_maybe_compact(
+        sess, endpoint_url, model, messages, headers, owner=None
+    ):
         captured["compact_owner"] = owner
         return messages, 8192, False
 
@@ -488,17 +529,26 @@ async def _build_context_owner_probe(monkeypatch, request_state):
     monkeypatch.setattr(chat_helpers, "extract_preset", fake_extract_preset)
     monkeypatch.setattr(chat_helpers, "add_user_message", fake_add_user_message)
     monkeypatch.setattr(chat_helpers, "load_prefs_for_user", fake_load_prefs)
-    monkeypatch.setattr(chat_helpers, "_normalize_model_id_from_cache", lambda sess: None)
-    monkeypatch.setattr(chat_helpers, "normalize_model_id", lambda endpoint_url, model, **kwargs: None)
+    monkeypatch.setattr(
+        chat_helpers, "_normalize_model_id_from_cache", lambda sess: None
+    )
+    monkeypatch.setattr(
+        chat_helpers, "normalize_model_id", lambda endpoint_url, model, **kwargs: None
+    )
     monkeypatch.setattr(chat_helpers, "maybe_compact", fake_maybe_compact)
-    monkeypatch.setattr(chat_helpers, "trim_for_context", lambda messages, context_length: messages)
+    monkeypatch.setattr(
+        chat_helpers, "trim_for_context", lambda messages, context_length: messages
+    )
 
     import src.user_time as user_time
 
     monkeypatch.setattr(
         user_time,
         "current_datetime_context_message",
-        lambda now_utc=None: {"role": "user", "content": "[Context - current date/time]"},
+        lambda now_utc=None: {
+            "role": "user",
+            "content": "[Context - current date/time]",
+        },
         raising=False,
     )
 
@@ -516,7 +566,9 @@ async def _build_context_owner_probe(monkeypatch, request_state):
         sess=sess,
         request=request,
         chat_handler=SimpleNamespace(),
-        chat_processor=SimpleNamespace(build_context_preface=fake_build_context_preface),
+        chat_processor=SimpleNamespace(
+            build_context_preface=fake_build_context_preface
+        ),
         message="hello",
         session_id="session-1",
         incognito=True,
@@ -526,7 +578,9 @@ async def _build_context_owner_probe(monkeypatch, request_state):
 
 
 @pytest.mark.asyncio
-async def test_build_chat_context_uses_api_token_owner_for_compaction_scope(monkeypatch):
+async def test_build_chat_context_uses_api_token_owner_for_compaction_scope(
+    monkeypatch,
+):
     ctx, captured = await _build_context_owner_probe(
         monkeypatch,
         {

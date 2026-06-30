@@ -13,7 +13,9 @@ def test_bash_fenced_read_file_function_call_runs_as_read_file():
 
 
 def test_python_fenced_read_file_function_call_runs_as_read_file():
-    blocks = parse_tool_blocks('```python\nread_file(path="notes/todo.md", offset=3, limit=2)\n```')
+    blocks = parse_tool_blocks(
+        '```python\nread_file(path="notes/todo.md", offset=3, limit=2)\n```'
+    )
 
     assert len(blocks) == 1
     assert blocks[0].tool_type == "read_file"
@@ -33,7 +35,9 @@ def test_bash_fenced_read_file_command_runs_as_read_file():
 
 
 def test_bash_fenced_read_file_json_command_runs_as_read_file():
-    blocks = parse_tool_blocks('```bash\nread_file {"path":"notes/todo.md","offset":1,"limit":4}\n```')
+    blocks = parse_tool_blocks(
+        '```bash\nread_file {"path":"notes/todo.md","offset":1,"limit":4}\n```'
+    )
 
     assert len(blocks) == 1
     assert blocks[0].tool_type == "read_file"
@@ -45,7 +49,7 @@ def test_bash_fenced_read_file_json_command_runs_as_read_file():
 
 
 def test_multiline_bash_read_file_block_stays_bash():
-    blocks = parse_tool_blocks('```bash\nread_file notes/todo.md\necho done\n```')
+    blocks = parse_tool_blocks("```bash\nread_file notes/todo.md\necho done\n```")
 
     assert len(blocks) == 1
     assert blocks[0].tool_type == "bash"

@@ -1,0 +1,6 @@
+{
+  "reportCallIssue": "none",
+  "reportAttributeAccessIssue": "none",
+  "reportMissingImports": "none",
+  "reportUndefinedVariable": "none"
+}

@@ -41,7 +41,9 @@ def _cors_allow_methods() -> list[str]:
     tree = ast.parse((ROOT / "app.py").read_text(encoding="utf-8"))
     for node in tree.body:
         if isinstance(node, ast.Assign):
-            names = [target.id for target in node.targets if isinstance(target, ast.Name)]
+            names = [
+                target.id for target in node.targets if isinstance(target, ast.Name)
+            ]
             if "CORS_ALLOW_METHODS" in names:
                 return ast.literal_eval(node.value)
     raise AssertionError("CORS_ALLOW_METHODS not found")

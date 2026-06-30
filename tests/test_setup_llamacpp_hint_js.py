@@ -5,6 +5,7 @@ _provider_label) is never reachable from first-run setup — a user pasting a
 local endpoint only saw the Ollama and generic examples. Both the static-HTML
 and the streamed-blocks renderings of the setup guide must carry the example.
 """
+
 from pathlib import Path
 
 _SRC = Path(__file__).resolve().parent.parent / "static" / "js" / "slashCommands.js"

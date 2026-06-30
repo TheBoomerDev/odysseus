@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 
 from cortex import goals, router as cortex_router, improve, skills_sh, cli_invoker
 from cortex.smart_router import SmartRouter, TaskCategory, RoutingPriority
@@ -49,18 +49,42 @@ def setup_cortex_routes(
     async def get_capabilities():
         """List all CORTEX submodule capabilities."""
         return {
-            "goals": {"decompose": True, "templates": 3, "state_machine": True,
-                      "tracking": True, "checkpoints": True, "presets": 5},
-            "router": {"route": True, "smart_route": True, "categories": 9, "agents_supported": 5},
+            "goals": {
+                "decompose": True,
+                "templates": 3,
+                "state_machine": True,
+                "tracking": True,
+                "checkpoints": True,
+                "presets": 5,
+            },
+            "router": {
+                "route": True,
+                "smart_route": True,
+                "categories": 9,
+                "agents_supported": 5,
+            },
             "improve": {"trajectories": True, "pattern_detection": True},
             "skills_sh": {"search": True, "install": skills_manager is not None},
             "cli_invoker": {"discover": True, "invoke": True},
             "smart_router": {"models": 24, "providers": 8, "categories": 9},
             "csuite": {"roles": 6, "query": True, "context": True},
-            "sdd": {"generate": True, "pipeline_steps": 7, "llm_generate": _sdd_gen._llm_available},
-            "heartbeat": {"status": True, "tick": True, "interval_s": 60, "ws_notify": True},
-            "integration": {"chat_routing": True, "goal_scheduling": True,
-                           "sdd_llm": _sdd_gen._llm_available, "heartbeat_ws": True},
+            "sdd": {
+                "generate": True,
+                "pipeline_steps": 7,
+                "llm_generate": _sdd_gen._llm_available,
+            },
+            "heartbeat": {
+                "status": True,
+                "tick": True,
+                "interval_s": 60,
+                "ws_notify": True,
+            },
+            "integration": {
+                "chat_routing": True,
+                "goal_scheduling": True,
+                "sdd_llm": _sdd_gen._llm_available,
+                "heartbeat_ws": True,
+            },
         }
 
     # ------------------------------------------------------------------
@@ -105,9 +129,18 @@ def setup_cortex_routes(
         """List available goal decomposition templates."""
         return {
             "templates": [
-                {"id": "migrate-database", "description": "Database migration planning"},
-                {"id": "audit-security", "description": "Security audit and vulnerability scan"},
-                {"id": "refactor-module", "description": "Code refactoring with module splitting"},
+                {
+                    "id": "migrate-database",
+                    "description": "Database migration planning",
+                },
+                {
+                    "id": "audit-security",
+                    "description": "Security audit and vulnerability scan",
+                },
+                {
+                    "id": "refactor-module",
+                    "description": "Code refactoring with module splitting",
+                },
             ]
         }
 
@@ -250,7 +283,9 @@ def setup_cortex_routes(
 
         result = skills_sh.install_skill(skills_manager, name)
         if not result.get("ok"):
-            raise HTTPException(status_code=404, detail=result.get("error", "install failed"))
+            raise HTTPException(
+                status_code=404, detail=result.get("error", "install failed")
+            )
         return result
 
     # ==================================================================
@@ -278,13 +313,17 @@ def setup_cortex_routes(
             try:
                 category = TaskCategory(cat_str)
             except ValueError:
-                raise HTTPException(status_code=400, detail=f"unknown category: {cat_str}")
+                raise HTTPException(
+                    status_code=400, detail=f"unknown category: {cat_str}"
+                )
 
         priority_str = body.get("priority", "quality")
         try:
             priority = RoutingPriority(priority_str)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"unknown priority: {priority_str}")
+            raise HTTPException(
+                status_code=400, detail=f"unknown priority: {priority_str}"
+            )
 
         result = _smart_router.route(prompt, category=category, priority=priority)
         return result
@@ -338,12 +377,15 @@ def setup_cortex_routes(
         """Set the shared company context for C-Suite agents."""
         ctx = CompanyContext(**body)
         _csuite.update_context(ctx)
-        return {"ok": True, "context": {
-            "name": ctx.name,
-            "industry": ctx.industry,
-            "stage": ctx.stage,
-            "team_size": ctx.team_size,
-        }}
+        return {
+            "ok": True,
+            "context": {
+                "name": ctx.name,
+                "industry": ctx.industry,
+                "stage": ctx.stage,
+                "team_size": ctx.team_size,
+            },
+        }
 
     # ==================================================================
     # SDD PIPELINE
@@ -420,7 +462,6 @@ def setup_cortex_routes(
             "errors": result.errors,
         }
 
-
     # ==================================================================
     # GOAL STATE MACHINE (Fase 4)
     # ==================================================================
@@ -437,7 +478,9 @@ def setup_cortex_routes(
             raise HTTPException(status_code=400, detail="goal_id and goal are required")
         try:
             session = goals.decompose_and_track(
-                goal_id, goal, _tracker,
+                goal_id,
+                goal,
+                _tracker,
                 context=body.get("context"),
             )
             return {
@@ -511,7 +554,9 @@ def setup_cortex_routes(
         try:
             to_status = GoalStatus(to_status_str)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"unknown status: {to_status_str}")
+            raise HTTPException(
+                status_code=400, detail=f"unknown status: {to_status_str}"
+            )
         try:
             session = _tracker.transition(goal_id, to_status, error=body.get("error"))
             return {
@@ -690,6 +735,7 @@ def setup_cortex_routes(
     async def chat_route_message(body: dict):
         """Route a chat message to the best model using SmartRouter."""
         from cortex.integration import route_chat_message
+
         message = body.get("message", "")
         if not message.strip():
             raise HTTPException(status_code=400, detail="message is required")
@@ -704,13 +750,15 @@ def setup_cortex_routes(
     async def goal_decompose_and_schedule(body: dict):
         """Decompose a goal and create ScheduledTasks."""
         from cortex.integration import decompose_and_schedule
+
         goal_id = body.get("goal_id", "")
         goal_text = body.get("goal", "")
         if not goal_id or not goal_text:
             raise HTTPException(status_code=400, detail="goal_id and goal are required")
         try:
             result = decompose_and_schedule(
-                goal_id, goal_text,
+                goal_id,
+                goal_text,
                 owner=body.get("owner", "admin"),
             )
             return result
@@ -722,6 +770,7 @@ def setup_cortex_routes(
     async def sdd_generate_with_odysseus_llm(body: dict):
         """Generate SDD docs using Odysseus LLM via integration layer."""
         from cortex.integration import generate_sdd_with_odysseus_llm
+
         goal_id = body.get("goal_id", "")
         goal_text = body.get("goal", "")
         if not goal_id or not goal_text:
@@ -734,6 +783,7 @@ def setup_cortex_routes(
     async def heartbeat_run_check():
         """Run heartbeat health check and notify via WebSocket."""
         from cortex.integration import heartbeat_health_check
+
         result = await heartbeat_health_check()
         return result
 

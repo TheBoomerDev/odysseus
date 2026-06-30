@@ -7,6 +7,7 @@ isolation even under concurrent access patterns.
 import asyncio
 import sys
 import os
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pytest
@@ -74,7 +75,9 @@ async def test_concurrent_add_message_does_not_cross_contaminate():
     assert len(b.history) == 5, f"Session B has {len(b.history)} messages"
     # Verify B's messages are purely from B
     for msg in b.history:
-        assert msg.content.endswith("_from_b"), f"Session B has cross-contaminated: {msg.content}"
+        assert msg.content.endswith("_from_b"), (
+            f"Session B has cross-contaminated: {msg.content}"
+        )
 
 
 @pytest.mark.asyncio
@@ -97,7 +100,9 @@ async def test_concurrent_read_write_isolation():
             hist = sess.get_context_messages()
             # Should never see writer's messages
             for msg in hist:
-                assert "writer_data" not in msg.get("content", ""), "Reader saw writer data!"
+                assert "writer_data" not in msg.get("content", ""), (
+                    "Reader saw writer data!"
+                )
 
     async def write_to_writer():
         for i in range(20):

@@ -7,6 +7,7 @@ _make_slug disambiguates repeats by appending "-N", but it only tracked the
 which makes the second table-of-contents link dead. Slugs are now guaranteed
 unique. Plain repeats keep their existing "-1", "-2" sequence.
 """
+
 from src.visual_report import _extract_headings
 
 

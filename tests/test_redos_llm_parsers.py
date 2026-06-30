@@ -18,7 +18,6 @@ the margin is ~100x.
 
 import time
 
-import pytest
 
 import src.agent_tools  # noqa: F401  (break agent_tools<->tool_parsing import cycle)
 from src.text_helpers import normalize_thinking_markup, strip_think
@@ -36,6 +35,7 @@ def _timed(fn, *args):
 
 
 # ── correctness is preserved ────────────────────────────────────────────────
+
 
 def test_thought_attr_normalization_unchanged():
     # `<thought time="0.4">` -> `<think time="0.4">` then stripped.
@@ -59,7 +59,9 @@ def test_thought_prefix_tags_not_overmatched():
 def test_tool_call_blocks_still_parsed():
     blocks = parse_tool_blocks('[TOOL_CALL]{tool: "shell", command: "ls"}[/TOOL_CALL]')
     assert blocks, "well-formed [TOOL_CALL] block should still parse"
-    assert "[TOOL_CALL]" not in strip_tool_blocks('before [TOOL_CALL]{tool: "shell", command: "ls"}[/TOOL_CALL] after')
+    assert "[TOOL_CALL]" not in strip_tool_blocks(
+        'before [TOOL_CALL]{tool: "shell", command: "ls"}[/TOOL_CALL] after'
+    )
 
 
 def test_xml_tool_call_blocks_still_parsed():
@@ -70,10 +72,13 @@ def test_xml_tool_call_blocks_still_parsed():
 
 
 def test_tool_code_blocks_still_parsed():
-    assert "<tool_code>" not in strip_tool_blocks('<tool_code>{"tool": "shell"}</tool_code>')
+    assert "<tool_code>" not in strip_tool_blocks(
+        '<tool_code>{"tool": "shell"}</tool_code>'
+    )
 
 
 # ── pathological inputs no longer blow up ───────────────────────────────────
+
 
 def test_thought_open_no_close_is_fast():
     evil = "<thought" + " " * 60_000  # no closing '>', ambiguous (\s+[^>]*)? loops
@@ -127,6 +132,7 @@ def test_tool_code_opener_flood_is_fast():
 # before an opener flood, or by a closer whose required inner delimiter is
 # missing. The parser must pair each opener only with a *later* closer.
 
+
 def test_xml_stale_closer_before_opener_flood_is_fast():
     # A lone leading </tool_call> makes a whole-string closer check true, but no
     # opener after it has a reachable closer. (strip exercises the CodeQL-flagged
@@ -161,6 +167,7 @@ def test_tool_code_closer_present_without_inner_brace_is_fast():
 # ── strip_think() is the production entrypoint that callers actually run ─────
 # The timing tests above cover normalize_thinking_markup and the scanners;
 # these cover strip_think() itself, which applies the think-tag regexes too.
+
 
 def test_strip_think_nested_and_attr_blocks_unchanged():
     # Values pin pre-existing behavior (incl. the nested-block quirk that leaves

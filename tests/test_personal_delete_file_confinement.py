@@ -1,6 +1,5 @@
 import asyncio
 import os
-from pathlib import Path
 
 from routes import personal_routes
 
@@ -25,7 +24,9 @@ class _FakeRAG:
 def _delete_endpoint(personal_docs):
     router = personal_routes.setup_personal_routes(personal_docs, None, True)
     for route in router.routes:
-        if getattr(route, "path", "") == "/api/personal/file" and "DELETE" in getattr(route, "methods", set()):
+        if getattr(route, "path", "") == "/api/personal/file" and "DELETE" in getattr(
+            route, "methods", set()
+        ):
             return route.endpoint
     raise AssertionError("DELETE /api/personal/file endpoint not found")
 
@@ -45,7 +46,9 @@ def test_delete_file_refuses_symlink_directory_escape(tmp_path, monkeypatch):
     monkeypatch.setattr(personal_routes, "get_rag_manager", lambda: rag)
 
     filepath = str(uploads / "linked" / "victim.txt")
-    result = asyncio.run(_delete_endpoint(docs)(filepath=filepath, owner="alice", _admin=None))
+    result = asyncio.run(
+        _delete_endpoint(docs)(filepath=filepath, owner="alice", _admin=None)
+    )
 
     assert result["deleted_from_disk"] is False
     assert victim.read_text(encoding="utf-8") == "keep me"
@@ -66,7 +69,9 @@ def test_delete_file_removes_regular_file_inside_upload_root(tmp_path, monkeypat
     monkeypatch.setattr(personal_routes, "get_rag_manager", lambda: rag)
 
     filepath = str(uploaded_file)
-    result = asyncio.run(_delete_endpoint(docs)(filepath=filepath, owner="alice", _admin=None))
+    result = asyncio.run(
+        _delete_endpoint(docs)(filepath=filepath, owner="alice", _admin=None)
+    )
 
     assert result["deleted_from_disk"] is True
     assert not uploaded_file.exists()
@@ -89,7 +94,9 @@ def test_delete_file_refuses_other_owners_upload(tmp_path, monkeypatch):
     monkeypatch.setattr(personal_routes, "get_rag_manager", lambda: rag)
 
     filepath = str(victim)
-    result = asyncio.run(_delete_endpoint(docs)(filepath=filepath, owner="alice", _admin=None))
+    result = asyncio.run(
+        _delete_endpoint(docs)(filepath=filepath, owner="alice", _admin=None)
+    )
 
     assert result["deleted_from_disk"] is False
     assert victim.read_text(encoding="utf-8") == "keep me"

@@ -24,7 +24,13 @@ def _metal_system(ram_gb=16.0, vram_gb=10.7):
     }
 
 
-def _fake_sysctl(brand="Apple M2 Pro", memsize_gb=32, wired_mb=None, display_json=None, display_text=None):
+def _fake_sysctl(
+    brand="Apple M2 Pro",
+    memsize_gb=32,
+    wired_mb=None,
+    display_json=None,
+    display_text=None,
+):
     def run(cmd):
         joined = " ".join(cmd)
         if "machdep.cpu.brand_string" in joined:
@@ -40,6 +46,7 @@ def _fake_sysctl(brand="Apple M2 Pro", memsize_gb=32, wired_mb=None, display_jso
         if "system_profiler SPDisplaysDataType" in joined:
             return display_text
         return None
+
     return run
 
 
@@ -49,19 +56,30 @@ def test_mlx_models_hidden_on_metal():
     on Apple Silicon — even though the catalog tags them as Apple-only."""
     results = rank_models(_metal_system(), limit=900)
     mlx = [m for m in results if str(m.get("quant", "")).startswith("mlx-")]
-    assert mlx == [], f"MLX models surfaced but cannot be served: {[m['name'] for m in mlx]}"
+    assert mlx == [], (
+        f"MLX models surfaced but cannot be served: {[m['name'] for m in mlx]}"
+    )
 
 
 def _cuda_system():
     return {
-        "has_gpu": True, "backend": "cuda", "gpu_name": "NVIDIA RTX 4090",
-        "gpu_vram_gb": 24.0, "gpu_count": 1, "available_ram_gb": 32.0, "total_ram_gb": 64.0,
+        "has_gpu": True,
+        "backend": "cuda",
+        "gpu_name": "NVIDIA RTX 4090",
+        "gpu_vram_gb": 24.0,
+        "gpu_count": 1,
+        "available_ram_gb": 32.0,
+        "total_ram_gb": 64.0,
     }
 
 
 def test_mlx_hidden_on_cuda_backend_unchanged():
     """Regression guard: Linux/CUDA users never saw MLX before and still don't."""
-    mlx = [m for m in rank_models(_cuda_system(), limit=900) if str(m.get("quant", "")).startswith("mlx-")]
+    mlx = [
+        m
+        for m in rank_models(_cuda_system(), limit=900)
+        if str(m.get("quant", "")).startswith("mlx-")
+    ]
     assert mlx == []
 
 
@@ -71,11 +89,16 @@ def test_only_gguf_models_recommended_on_metal():
     model recommended on Apple Silicon must ship a servable GGUF."""
     catalog = {m["name"]: m for m in get_models()}
     unservable = [
-        r["name"] for r in rank_models(_metal_system(), limit=900)
-        if not (catalog.get(r["name"], {}).get("is_gguf")
-                or catalog.get(r["name"], {}).get("gguf_sources"))
+        r["name"]
+        for r in rank_models(_metal_system(), limit=900)
+        if not (
+            catalog.get(r["name"], {}).get("is_gguf")
+            or catalog.get(r["name"], {}).get("gguf_sources")
+        )
     ]
-    assert unservable == [], f"{len(unservable)} non-GGUF models on Metal, e.g. {unservable[:3]}"
+    assert unservable == [], (
+        f"{len(unservable)} non-GGUF models on Metal, e.g. {unservable[:3]}"
+    )
 
 
 def test_qwen_catalog_entries_point_at_verified_gguf_repos():
@@ -85,12 +108,17 @@ def test_qwen_catalog_entries_point_at_verified_gguf_repos():
     expected = {
         "Qwen/Qwen3.5-9B": ("unsloth/Qwen3.5-9B-GGUF", "Qwen3.5-9B-Q4_K_M.gguf"),
         "Qwen/Qwen3.6-27B": ("unsloth/Qwen3.6-27B-GGUF", "Qwen3.6-27B-Q4_K_M.gguf"),
-        "Qwen/Qwen3.6-35B-A3B": ("unsloth/Qwen3.6-35B-A3B-GGUF", "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf"),
+        "Qwen/Qwen3.6-35B-A3B": (
+            "unsloth/Qwen3.6-35B-A3B-GGUF",
+            "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        ),
     }
 
     for model_name, (repo, filename) in expected.items():
         sources = catalog[model_name].get("gguf_sources") or []
-        assert any(src.get("repo") == repo and src.get("file") == filename for src in sources)
+        assert any(
+            src.get("repo") == repo and src.get("file") == filename for src in sources
+        )
 
 
 def test_safetensors_models_still_recommended_on_cuda():
@@ -106,10 +134,18 @@ def test_apple_silicon_detected_as_metal(monkeypatch):
     monkeypatch.setattr(hardware, "_remote_host", None)
     monkeypatch.setattr(hardware.platform, "system", lambda: "Darwin")
     monkeypatch.setattr(hardware.platform, "machine", lambda: "arm64")
-    monkeypatch.setattr(hardware, "_run", _fake_sysctl(
-        memsize_gb=32,
-        display_json={"SPDisplaysDataType": [{"sppci_model": "Apple M2 Pro", "sppci_cores": "19"}]},
-    ))
+    monkeypatch.setattr(
+        hardware,
+        "_run",
+        _fake_sysctl(
+            memsize_gb=32,
+            display_json={
+                "SPDisplaysDataType": [
+                    {"sppci_model": "Apple M2 Pro", "sppci_cores": "19"}
+                ]
+            },
+        ),
+    )
 
     info = hardware._detect_apple_silicon()
     assert info is not None
@@ -124,12 +160,16 @@ def test_apple_silicon_gpu_cores_fall_back_to_plain_text(monkeypatch):
     monkeypatch.setattr(hardware, "_remote_host", None)
     monkeypatch.setattr(hardware.platform, "system", lambda: "Darwin")
     monkeypatch.setattr(hardware.platform, "machine", lambda: "arm64")
-    monkeypatch.setattr(hardware, "_run", _fake_sysctl(
-        brand="Apple M4 Max",
-        memsize_gb=64,
-        display_json="{not-json",
-        display_text="Graphics/Displays:\n\nApple M4 Max:\n  Total Number of Cores: 32\n",
-    ))
+    monkeypatch.setattr(
+        hardware,
+        "_run",
+        _fake_sysctl(
+            brand="Apple M4 Max",
+            memsize_gb=64,
+            display_json="{not-json",
+            display_text="Graphics/Displays:\n\nApple M4 Max:\n  Total Number of Cores: 32\n",
+        ),
+    )
 
     info = hardware._detect_apple_silicon()
     assert info is not None
@@ -177,11 +217,21 @@ def test_plain_arm_mac_skipped(monkeypatch):
 def test_detect_system_propagates_unified_memory(monkeypatch):
     """The unified_memory flag set by GPU detection must survive into the
     system dict so the API and UI can report it (it was being dropped)."""
-    monkeypatch.setattr(hardware, "_detect_apple_silicon", lambda: {
-        "gpu_name": "Apple M4", "gpu_vram_gb": 10.7, "gpu_count": 1,
-        "gpus": [], "gpu_groups": [], "homogeneous": True,
-        "backend": "metal", "unified_memory": True, "gpu_cores": 10,
-    })
+    monkeypatch.setattr(
+        hardware,
+        "_detect_apple_silicon",
+        lambda: {
+            "gpu_name": "Apple M4",
+            "gpu_vram_gb": 10.7,
+            "gpu_count": 1,
+            "gpus": [],
+            "gpu_groups": [],
+            "homogeneous": True,
+            "backend": "metal",
+            "unified_memory": True,
+            "gpu_cores": 10,
+        },
+    )
     monkeypatch.setattr(hardware, "_get_ram_gb", lambda: 16.0)
     monkeypatch.setattr(hardware, "_get_available_ram_gb", lambda: 11.0)
     monkeypatch.setattr(hardware, "_get_cpu_count", lambda: 10)

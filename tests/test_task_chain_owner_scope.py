@@ -37,7 +37,9 @@ def _endpoint(method, path):
     task_routes.SessionLocal = _TS
     router = task_routes.setup_task_routes(MagicMock())
     for route in router.routes:
-        if getattr(route, "path", None) == path and method in getattr(route, "methods", set()):
+        if getattr(route, "path", None) == path and method in getattr(
+            route, "methods", set()
+        ):
             return route.endpoint
     raise RuntimeError(f"{method} {path} not found")
 
@@ -94,7 +96,11 @@ async def test_update_task_rejects_cross_owner_chain_target():
     assert exc.value.status_code == 404
     db = _TS()
     try:
-        source = db.query(ScheduledTask).filter(ScheduledTask.id == "alice-source-update").first()
+        source = (
+            db.query(ScheduledTask)
+            .filter(ScheduledTask.id == "alice-source-update")
+            .first()
+        )
         assert source.then_task_id is None
     finally:
         db.close()

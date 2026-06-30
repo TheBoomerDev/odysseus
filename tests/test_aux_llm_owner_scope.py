@@ -11,14 +11,19 @@ def _src(path: str) -> str:
 def test_registered_manual_compaction_uses_session_owner_for_utility_endpoint():
     session_src = _src("routes/session_routes.py")
 
-    assert 'owner = getattr(session, "owner", None) or effective_user(request)' in session_src
+    assert (
+        'owner = getattr(session, "owner", None) or effective_user(request)'
+        in session_src
+    )
     assert 'resolve_endpoint("utility", owner=owner)' in session_src
 
 
 def test_task_name_generation_uses_owner_scoped_session_endpoint():
     src = _src("routes/task_routes.py")
 
-    assert "async def _generate_task_name(prompt: str, owner: Optional[str] = None)" in src
+    assert (
+        "async def _generate_task_name(prompt: str, owner: Optional[str] = None)" in src
+    )
     assert "q = q.filter(DbSession.owner == owner)" in src
     assert "headers = recent.headers or {}" in src
     assert "headers=headers" in src
@@ -64,7 +69,10 @@ def test_research_routes_fallbacks_are_owner_scoped():
     assert '_merge(*resolve_endpoint("research", owner=user))' in src
     assert '_merge(*resolve_endpoint("utility", owner=user))' in src
     assert "ep = _owned_enabled_endpoint(db, user)" in src
-    assert "db.query(ModelEndpoint).filter(ModelEndpoint.is_enabled == True).first()" not in src
+    assert (
+        "db.query(ModelEndpoint).filter(ModelEndpoint.is_enabled == True).first()"
+        not in src
+    )
     # _resolve_research_endpoint derives the scope from the session owner. The
     # rebased code generalized this to honor an explicit `owner` argument first
     # (``owner = owner or getattr(sess, "owner", None) or None``), so assert on

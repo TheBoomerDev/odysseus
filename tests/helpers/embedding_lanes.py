@@ -83,7 +83,9 @@ class FakeCollection:
         if self.dim is None:
             self.dim = dim
         elif self.dim != dim:
-            raise RuntimeError(f"Collection expecting embedding with dimension of {self.dim}, got {dim}")
+            raise RuntimeError(
+                f"Collection expecting embedding with dimension of {self.dim}, got {dim}"
+            )
 
 
 class FakeChroma:

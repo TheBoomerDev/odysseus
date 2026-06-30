@@ -8,6 +8,7 @@ Regression for issue #345: chat models emit GitHub-style :shortcode: text
 (e.g. :blush:, :microphone:) instead of the actual emoji, and nothing in the
 render pipeline translated them, so they showed up as literal ":blush:" text.
 """
+
 import json
 import shutil
 import subprocess
@@ -23,7 +24,11 @@ _HAS_NODE = shutil.which("node") is not None
 def _run(js: str) -> str:
     proc = subprocess.run(
         ["node", "--input-type=module"],
-        input=js, capture_output=True, text=True, cwd=str(_REPO), timeout=30,
+        input=js,
+        capture_output=True,
+        text=True,
+        cwd=str(_REPO),
+        timeout=30,
     )
     assert proc.returncode == 0, proc.stderr
     return proc.stdout.strip()

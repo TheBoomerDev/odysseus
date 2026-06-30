@@ -91,11 +91,14 @@ def test_build_models_url_preserves_explicit_non_v1_path(monkeypatch):
     )
 
 
-@pytest.mark.parametrize("base_url", [
-    "http://localhost:1234?",
-    "http://localhost:1234#fragment",
-    "http://localhost:1234/v1?token=abc",
-])
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "http://localhost:1234?",
+        "http://localhost:1234#fragment",
+        "http://localhost:1234/v1?token=abc",
+    ],
+)
 def test_build_models_url_rejects_query_or_fragment_base(monkeypatch, base_url):
     monkeypatch.setattr(endpoint_resolver, "resolve_url", lambda url: url)
     _neutralize_provider_detection(monkeypatch)
@@ -110,7 +113,9 @@ def test_build_models_url_rejects_query_or_fragment_base(monkeypatch, base_url):
 def test_llm_core_list_model_ids_queries_v1_models_for_lmstudio(monkeypatch):
     """Issue #25: probing `http://localhost:1234/v1` must hit `/v1/models`."""
     monkeypatch.setattr(endpoint_resolver, "resolve_url", lambda url: url)
-    monkeypatch.setattr(llm_core, "_configured_cached_model_ids", lambda url, **kwargs: [])
+    monkeypatch.setattr(
+        llm_core, "_configured_cached_model_ids", lambda url, **kwargs: []
+    )
     seen = []
 
     def fake_get(url, headers=None, timeout=None):
@@ -140,7 +145,9 @@ def test_llm_core_list_model_ids_queries_v1_models_for_lmstudio(monkeypatch):
 def test_llm_core_list_model_ids_queries_v1_models_for_bare_lmstudio(monkeypatch):
     """Issue #25: probing `http://localhost:1234` (no /v1) must hit `/v1/models`."""
     monkeypatch.setattr(endpoint_resolver, "resolve_url", lambda url: url)
-    monkeypatch.setattr(llm_core, "_configured_cached_model_ids", lambda url, **kwargs: [])
+    monkeypatch.setattr(
+        llm_core, "_configured_cached_model_ids", lambda url, **kwargs: []
+    )
     # Localhost with empty path would otherwise be misclassified as Ollama
     # (llm_core._is_ollama_native_url); neutralise that for the test.
     monkeypatch.setattr(llm_core, "_is_ollama_native_url", lambda url: False)
@@ -163,7 +170,9 @@ def test_llm_core_list_model_ids_handles_empty_lmstudio_list(monkeypatch):
     error (issue #25: previously the empty case was indistinguishable from
     a connection failure)."""
     monkeypatch.setattr(endpoint_resolver, "resolve_url", lambda url: url)
-    monkeypatch.setattr(llm_core, "_configured_cached_model_ids", lambda url, **kwargs: [])
+    monkeypatch.setattr(
+        llm_core, "_configured_cached_model_ids", lambda url, **kwargs: []
+    )
 
     def fake_get(url, headers=None, timeout=None):
         request = httpx.Request("GET", url)

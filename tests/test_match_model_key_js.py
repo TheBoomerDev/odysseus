@@ -7,6 +7,7 @@ Regression: model name -> info/pricing lookups returned the FIRST substring
 match, so "gpt-4o-mini" matched the shorter "gpt-4o" key and was billed at
 gpt-4o rates (~16x) with the wrong context window.
 """
+
 import json
 import shutil
 import subprocess
@@ -28,7 +29,11 @@ def _match(name):
     )
     proc = subprocess.run(
         ["node", "--input-type=module"],
-        input=js, capture_output=True, text=True, cwd=str(_REPO), timeout=30,
+        input=js,
+        capture_output=True,
+        text=True,
+        cwd=str(_REPO),
+        timeout=30,
     )
     assert proc.returncode == 0, proc.stderr
     return json.loads(proc.stdout.strip())

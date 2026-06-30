@@ -1,4 +1,5 @@
 """Regression tests for native Ollama Cloud provider handling."""
+
 import httpx
 
 from src import llm_core
@@ -135,6 +136,7 @@ def test_list_model_ids_from_openai_compatible_v1(monkeypatch):
 # (tool-result) round. _build_ollama_payload must parse it back to an object.
 # ---------------------------------------------------------------------------
 
+
 def _assistant_tool_call_msgs():
     """A canonical OpenAI-style assistant tool call + tool result, as produced by
     agent_loop._append_tool_results (arguments are a JSON string)."""
@@ -147,7 +149,10 @@ def _assistant_tool_call_msgs():
                 {
                     "id": "call_0",
                     "type": "function",
-                    "function": {"name": "app_api", "arguments": '{"action": "get_memory"}'},
+                    "function": {
+                        "name": "app_api",
+                        "arguments": '{"action": "get_memory"}',
+                    },
                 }
             ],
         },
@@ -157,7 +162,10 @@ def _assistant_tool_call_msgs():
 
 def test_ollama_payload_parses_string_arguments_to_object():
     payload = llm_core._build_ollama_payload(
-        "gpt-oss:120b", _assistant_tool_call_msgs(), temperature=0.0, max_tokens=0,
+        "gpt-oss:120b",
+        _assistant_tool_call_msgs(),
+        temperature=0.0,
+        max_tokens=0,
     )
     asst = payload["messages"][1]
     args = asst["tool_calls"][0]["function"]["arguments"]
@@ -172,9 +180,14 @@ def test_ollama_payload_drops_gemini_thought_signature():
     """A cross-provider fallback can hand Ollama a tool call that still carries
     Gemini's opaque extra_content; it is meaningless to Ollama and must not leak."""
     msgs = _assistant_tool_call_msgs()
-    msgs[1]["tool_calls"][0]["extra_content"] = {"google": {"thought_signature": "AAAA"}}
+    msgs[1]["tool_calls"][0]["extra_content"] = {
+        "google": {"thought_signature": "AAAA"}
+    }
     payload = llm_core._build_ollama_payload(
-        "gpt-oss:120b", msgs, temperature=0.0, max_tokens=0,
+        "gpt-oss:120b",
+        msgs,
+        temperature=0.0,
+        max_tokens=0,
     )
     tc = payload["messages"][1]["tool_calls"][0]
     assert "extra_content" not in tc
@@ -188,10 +201,12 @@ def test_ollama_payload_leaves_plain_messages_untouched():
 
 
 def test_ollama_payload_tolerates_malformed_arguments():
-    msgs = [{
-        "role": "assistant",
-        "tool_calls": [{"function": {"name": "x", "arguments": "{not json"}}],
-    }]
+    msgs = [
+        {
+            "role": "assistant",
+            "tool_calls": [{"function": {"name": "x", "arguments": "{not json"}}],
+        }
+    ]
     payload = llm_core._build_ollama_payload("m", msgs, temperature=0.0, max_tokens=0)
     # Falls back to an empty object rather than raising.
     assert payload["messages"][0]["tool_calls"][0]["function"]["arguments"] == {}
@@ -212,8 +227,11 @@ def test_build_ollama_payload_emits_num_ctx_when_known_and_large():
     """num_ctx passes through when the caller supplies a trusted value
     larger than Ollama's 2048 default."""
     payload = llm_core._build_ollama_payload(
-        "kimi-k2", [{"role": "user", "content": "x"}],
-        temperature=0.5, max_tokens=100, num_ctx=131072,
+        "kimi-k2",
+        [{"role": "user", "content": "x"}],
+        temperature=0.5,
+        max_tokens=100,
+        num_ctx=131072,
     )
     assert payload["options"]["num_ctx"] == 131072
 
@@ -222,8 +240,11 @@ def test_build_ollama_payload_emits_num_ctx_for_small_known_models():
     """A model with a real context smaller than Ollama's 2048 default
     would OOM if Ollama used its own default. Pass the real value."""
     payload = llm_core._build_ollama_payload(
-        "tiny-llm", [{"role": "user", "content": "x"}],
-        temperature=0.5, max_tokens=100, num_ctx=1024,
+        "tiny-llm",
+        [{"role": "user", "content": "x"}],
+        temperature=0.5,
+        max_tokens=100,
+        num_ctx=1024,
     )
     assert payload["options"]["num_ctx"] == 1024
 
@@ -233,8 +254,11 @@ def test_build_ollama_payload_omits_none_and_zero():
     Both should be dropped, not emitted as a 0-context request."""
     for ctx in (None, 0):
         payload = llm_core._build_ollama_payload(
-            "m", [{"role": "user", "content": "x"}],
-            temperature=0.5, max_tokens=100, num_ctx=ctx,
+            "m",
+            [{"role": "user", "content": "x"}],
+            temperature=0.5,
+            max_tokens=100,
+            num_ctx=ctx,
         )
         assert "num_ctx" not in payload.get("options", {}), (
             f"num_ctx={ctx} should not be emitted"
@@ -246,9 +270,13 @@ def test_build_ollama_payload_omits_default_context_fallback():
     discover the model's actual window. Emitting that as num_ctx would
     lie to Ollama for unknown models, so the builder filters it out."""
     from src.model_context import DEFAULT_CONTEXT
+
     payload = llm_core._build_ollama_payload(
-        "unknown-llm-9001", [{"role": "user", "content": "x"}],
-        temperature=0.5, max_tokens=100, num_ctx=DEFAULT_CONTEXT,
+        "unknown-llm-9001",
+        [{"role": "user", "content": "x"}],
+        temperature=0.5,
+        max_tokens=100,
+        num_ctx=DEFAULT_CONTEXT,
     )
     assert "num_ctx" not in payload.get("options", {})
 
@@ -256,8 +284,7 @@ def test_build_ollama_payload_omits_default_context_fallback():
 def test_llm_call_threads_discovered_num_ctx(monkeypatch):
     """When get_context_length returns a real, large value, it ends up
     in the outgoing Ollama request as options.num_ctx (issue #909)."""
-    monkeypatch.setattr(llm_core, "get_context_length",
-                        lambda url, model: 32768)
+    monkeypatch.setattr(llm_core, "get_context_length", lambda url, model: 32768)
 
     seen = {}
 
@@ -265,7 +292,8 @@ def test_llm_call_threads_discovered_num_ctx(monkeypatch):
         seen["json"] = json
         request = httpx.Request("POST", url)
         return httpx.Response(
-            200, request=request,
+            200,
+            request=request,
             json={"message": {"content": "OK"}, "done": True},
         )
 
@@ -298,10 +326,8 @@ def test_stream_llm_threads_discovered_num_ctx(monkeypatch):
             "stream": True,
         }
 
-    monkeypatch.setattr(llm_core, "get_context_length",
-                        lambda url, model: 32768)
-    monkeypatch.setattr(llm_core, "_build_ollama_payload",
-                        spy_build_ollama_payload)
+    monkeypatch.setattr(llm_core, "get_context_length", lambda url, model: 32768)
+    monkeypatch.setattr(llm_core, "_build_ollama_payload", spy_build_ollama_payload)
 
     # Short-circuit before the actual HTTP call: host is "dead" → yields
     # an error SSE chunk and returns. The call to _build_ollama_payload
@@ -309,13 +335,16 @@ def test_stream_llm_threads_discovered_num_ctx(monkeypatch):
     monkeypatch.setattr(llm_core, "_is_host_dead", lambda url: True)
 
     async def collect():
-        return [chunk async for chunk in llm_core.stream_llm(
-            "https://ollama.com/api",
-            "kimi-k2",
-            [{"role": "user", "content": "Say OK"}],
-            temperature=0.2,
-            max_tokens=7,
-        )]
+        return [
+            chunk
+            async for chunk in llm_core.stream_llm(
+                "https://ollama.com/api",
+                "kimi-k2",
+                [{"role": "user", "content": "Say OK"}],
+                temperature=0.2,
+                max_tokens=7,
+            )
+        ]
 
     out = asyncio.run(collect())
 

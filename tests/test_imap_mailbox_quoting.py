@@ -69,7 +69,7 @@ def test_mcp_list_emails_quotes_spaced_folder_on_select(monkeypatch):
 
 def test_mcp_quote_helper_handles_spaced_and_quoted_mailboxes():
     assert es._q("Sent Items") == '"Sent Items"'
-    assert es._q('[Gmail]/All Mail') == '"[Gmail]/All Mail"'
+    assert es._q("[Gmail]/All Mail") == '"[Gmail]/All Mail"'
     assert es._q('Label "Needs Reply"') == '"Label \\"Needs Reply\\""'
 
 

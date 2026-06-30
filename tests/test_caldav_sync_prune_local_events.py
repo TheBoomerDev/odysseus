@@ -12,6 +12,7 @@ pure DB logic; `_sync_blocking` itself needs a live CalDAV client) and asserts a
 local-origin event survives while a server-origin one with a vanished UID does
 not.
 """
+
 import tempfile
 from datetime import datetime, timedelta
 
@@ -38,13 +39,19 @@ _END = _NOW + timedelta(days=365)
 
 def _prune(db, calendar_id, seen_uids):
     """The exact prune filter from src/caldav_sync.py (post-fix)."""
-    stale = db.query(CalendarEvent).filter(
-        CalendarEvent.calendar_id == calendar_id,
-        CalendarEvent.origin == "caldav",
-        CalendarEvent.dtstart >= _START,
-        CalendarEvent.dtstart <= _END,
-        ~CalendarEvent.uid.in_(seen_uids) if seen_uids else CalendarEvent.uid.isnot(None),
-    ).all()
+    stale = (
+        db.query(CalendarEvent)
+        .filter(
+            CalendarEvent.calendar_id == calendar_id,
+            CalendarEvent.origin == "caldav",
+            CalendarEvent.dtstart >= _START,
+            CalendarEvent.dtstart <= _END,
+            ~CalendarEvent.uid.in_(seen_uids)
+            if seen_uids
+            else CalendarEvent.uid.isnot(None),
+        )
+        .all()
+    )
     for ev in stale:
         db.delete(ev)
     db.commit()
@@ -58,17 +65,27 @@ def _seed():
         db.query(CalendarCal).delete()
         db.add(CalendarCal(id="cal1", owner="alice", name="Work", source="caldav"))
         # A server-synced event whose UID is NO LONGER returned (deleted upstream).
-        db.add(CalendarEvent(
-            uid="server-gone@svc", calendar_id="cal1", summary="Old server event",
-            dtstart=_NOW + timedelta(days=1), dtend=_NOW + timedelta(days=1, hours=1),
-            origin="caldav",
-        ))
+        db.add(
+            CalendarEvent(
+                uid="server-gone@svc",
+                calendar_id="cal1",
+                summary="Old server event",
+                dtstart=_NOW + timedelta(days=1),
+                dtend=_NOW + timedelta(days=1, hours=1),
+                origin="caldav",
+            )
+        )
         # A locally-created event (agent / triage / failed write-back) — origin NULL.
-        db.add(CalendarEvent(
-            uid="local-uuid", calendar_id="cal1", summary="Dentist",
-            dtstart=_NOW + timedelta(days=2), dtend=_NOW + timedelta(days=2, hours=1),
-            origin=None,
-        ))
+        db.add(
+            CalendarEvent(
+                uid="local-uuid",
+                calendar_id="cal1",
+                summary="Dentist",
+                dtstart=_NOW + timedelta(days=2),
+                dtend=_NOW + timedelta(days=2, hours=1),
+                origin=None,
+            )
+        )
         db.commit()
     finally:
         db.close()
@@ -95,7 +112,9 @@ def test_synced_event_still_returned_is_kept():
         # The server still returns the synced event → it must be kept.
         deleted = _prune(db, "cal1", seen_uids={"server-gone@svc"})
         assert deleted == 0
-        assert db.query(CalendarEvent).filter_by(uid="server-gone@svc").first() is not None
+        assert (
+            db.query(CalendarEvent).filter_by(uid="server-gone@svc").first() is not None
+        )
         assert db.query(CalendarEvent).filter_by(uid="local-uuid").first() is not None
     finally:
         db.close()

@@ -6,6 +6,7 @@ thought channel. Cookbook serve commands should supply that template for
 OpenAI-compatible servers instead of relying on a generic chat template that
 cannot toggle thinking mode.
 """
+
 from pathlib import Path
 
 SRC = Path(__file__).resolve().parent.parent / "static/js/cookbook.js"
@@ -27,5 +28,8 @@ def test_vllm_and_sglang_apply_gemma4_thinking_template():
 
     assert "function _isGemma4ThinkingModel" in text
     assert "const _gemma4ChatTemplate" in text
-    assert "if (_gemma4ChatTemplate) cmd += ` --chat-template ${_gemma4ChatTemplate}`;" in text
+    assert (
+        "if (_gemma4ChatTemplate) cmd += ` --chat-template ${_gemma4ChatTemplate}`;"
+        in text
+    )
     assert text.count("_gemma4ThinkingChatTemplateArg(modelName)") >= 2

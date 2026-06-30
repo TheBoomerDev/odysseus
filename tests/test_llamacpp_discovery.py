@@ -6,6 +6,7 @@ Ollama, or plain OpenAI-compatible servers.
 Companion to test_lmstudio_discovery.py; the llama.cpp fingerprint is checked
 *after* the LM Studio one, so LM Studio still wins when both could match.
 """
+
 from src.model_discovery import ModelDiscovery
 
 
@@ -22,6 +23,7 @@ class _FakeResponse:
 # discover_models — scan list includes 8080 (llama-server default)
 # ════════════════════════════════════════════════════════════
 
+
 class TestLlamaCppScanPort:
     def test_discover_models_scans_port_8080(self, monkeypatch):
         """llama-server's default port 8080 must be among the scan targets."""
@@ -34,7 +36,8 @@ class TestLlamaCppScanPort:
 
         monkeypatch.setattr(discovery, "_check_port", fake_check_port)
         monkeypatch.setattr(
-            "src.model_discovery.discover_tailscale_hosts", lambda: [],
+            "src.model_discovery.discover_tailscale_hosts",
+            lambda: [],
         )
 
         discovery.discover_models()
@@ -44,6 +47,7 @@ class TestLlamaCppScanPort:
 # ════════════════════════════════════════════════════════════
 # _fingerprint_provider — llama-server via /props
 # ════════════════════════════════════════════════════════════
+
 
 class TestLlamaCppFingerprint:
     # A representative llama-server /props payload (trimmed to the keys the
@@ -76,8 +80,14 @@ class TestLlamaCppFingerprint:
         returned even when /props would also match."""
         discovery = ModelDiscovery(default_host="localhost")
         lmstudio_native = {
-            "models": [{"type": "llm", "key": "qwen3.6-27b",
-                        "architecture": "qwen35", "format": "gguf"}]
+            "models": [
+                {
+                    "type": "llm",
+                    "key": "qwen3.6-27b",
+                    "architecture": "qwen35",
+                    "format": "gguf",
+                }
+            ]
         }
 
         def fake_get(url, timeout=None):
@@ -140,6 +150,7 @@ class TestLlamaCppFingerprint:
 # Docker loopback rewrite — host.docker.internal:8080 in scan
 # ════════════════════════════════════════════════════════════
 
+
 class TestDockerLoopbackScan:
     def test_host_docker_internal_in_scan_hosts(self, monkeypatch):
         """When no LLM_HOSTS env override is set, host.docker.internal must be
@@ -147,7 +158,8 @@ class TestDockerLoopbackScan:
         discovered from inside the container."""
         monkeypatch.delenv("LLM_HOSTS", raising=False)
         monkeypatch.setattr(
-            "src.model_discovery.discover_tailscale_hosts", lambda: [],
+            "src.model_discovery.discover_tailscale_hosts",
+            lambda: [],
         )
         discovery = ModelDiscovery(default_host="localhost")
         hosts = discovery._get_hosts()
@@ -164,11 +176,13 @@ class TestDockerLoopbackScan:
             if url.endswith("/v1/models") or url.endswith("/api/v1/models"):
                 return _FakeResponse({"data": [{"id": "gemma-4-12b"}]})
             if url.endswith("/props"):
-                return _FakeResponse({
-                    "default_generation_settings": {"n_ctx": 4096},
-                    "total_slots": 1,
-                    "chat_template": "{{ messages }}",
-                })
+                return _FakeResponse(
+                    {
+                        "default_generation_settings": {"n_ctx": 4096},
+                        "total_slots": 1,
+                        "chat_template": "{{ messages }}",
+                    }
+                )
             return _FakeResponse({}, ok=False)
 
         monkeypatch.setattr("src.model_discovery.httpx.get", fake_get)

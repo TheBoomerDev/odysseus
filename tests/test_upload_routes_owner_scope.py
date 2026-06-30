@@ -135,7 +135,9 @@ def test_download_file_denies_cross_owner_without_leaking_file(tmp_path, monkeyp
     download_file = _upload_endpoints(handler, monkeypatch)["download_file"]
 
     with pytest.raises(HTTPException) as exc:
-        asyncio.run(download_file(_Request(user="alice", auth_manager=_AuthManager()), bob_id))
+        asyncio.run(
+            download_file(_Request(user="alice", auth_manager=_AuthManager()), bob_id)
+        )
 
     assert exc.value.status_code == 404
 
@@ -226,7 +228,9 @@ def test_get_vision_text_denies_cross_owner_before_cache_read(tmp_path, monkeypa
     assert exc.value.status_code == 404
 
 
-def test_get_vision_text_denies_cross_owner_before_image_analysis(tmp_path, monkeypatch):
+def test_get_vision_text_denies_cross_owner_before_image_analysis(
+    tmp_path, monkeypatch
+):
     handler, _alice_id, bob_id, _upload_dir = _make_upload_store(tmp_path, monkeypatch)
     get_vision_text = _upload_endpoints(handler, monkeypatch)["get_vision_text"]
 
@@ -247,7 +251,9 @@ def test_get_vision_text_denies_cross_owner_before_image_analysis(tmp_path, monk
     assert exc.value.status_code == 404
 
 
-def test_get_vision_text_rejects_upload_symlink_escape_before_analysis(tmp_path, monkeypatch):
+def test_get_vision_text_rejects_upload_symlink_escape_before_analysis(
+    tmp_path, monkeypatch
+):
     handler, _alice_id, _bob_id, upload_dir = _make_upload_store(tmp_path, monkeypatch)
     get_vision_text = _upload_endpoints(handler, monkeypatch)["get_vision_text"]
     escape_id = "e" * 32 + ".png"

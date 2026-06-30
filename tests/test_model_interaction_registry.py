@@ -7,6 +7,7 @@ registered in TOOL_HANDLERS, (2) each handler runs the moved logic and threads
 session_id/owner from the ctx, and (3) tool_execution.py dispatches them
 through the registry rather than the legacy dispatch_ai_tool elif.
 """
+
 import asyncio
 from pathlib import Path
 
@@ -39,8 +40,11 @@ def test_chat_with_model_threads_owner_and_returns(monkeypatch):
     monkeypatch.setattr(ai_interaction, "_resolve_model", fake_resolve)
     monkeypatch.setattr(llm_core, "llm_call_async", fake_call)
 
-    res = asyncio.run(mit.ChatWithModelTool().execute(
-        "model-x\nhello there", {"owner": "alice", "session_id": "s1"}))
+    res = asyncio.run(
+        mit.ChatWithModelTool().execute(
+            "model-x\nhello there", {"owner": "alice", "session_id": "s1"}
+        )
+    )
 
     assert res == {"model": "model-x", "response": "hi back"}
     assert seen["owner"] == "alice"
@@ -61,8 +65,9 @@ def test_ask_teacher_threads_owner_and_marks_teacher(monkeypatch):
     monkeypatch.setattr(ai_interaction, "_resolve_model", fake_resolve)
     monkeypatch.setattr(llm_core, "llm_call_async", fake_call)
 
-    res = asyncio.run(mit.AskTeacherTool().execute(
-        "teacher-x\nI am stuck", {"owner": "bob"}))
+    res = asyncio.run(
+        mit.AskTeacherTool().execute("teacher-x\nI am stuck", {"owner": "bob"})
+    )
 
     assert res["teacher"] is True
     assert res["response"] == "do this and that"
@@ -93,7 +98,9 @@ def test_list_models_no_endpoints(monkeypatch):
 def test_dispatched_via_registry_not_dispatch_ai_tool():
     """The model tools route through the registry (_document_tool_dispatch), and
     are no longer in the dispatch_ai_tool elif tuple."""
-    source = (Path(__file__).resolve().parent.parent / "src" / "tool_execution.py").read_text(encoding="utf-8")
+    source = (
+        Path(__file__).resolve().parent.parent / "src" / "tool_execution.py"
+    ).read_text(encoding="utf-8")
     assert 'elif tool in ("chat_with_model", "ask_teacher", "list_models"):' in source
 
     marker = "from src.ai_interaction import dispatch_ai_tool"
@@ -101,4 +108,6 @@ def test_dispatched_via_registry_not_dispatch_ai_tool():
     branch_head = source.rfind("elif tool in (", 0, idx)
     legacy_tuple = source[branch_head:idx]
     for name in _MODEL_TOOLS:
-        assert f'"{name}"' not in legacy_tuple, f"{name} still routed via dispatch_ai_tool"
+        assert f'"{name}"' not in legacy_tuple, (
+            f"{name} still routed via dispatch_ai_tool"
+        )

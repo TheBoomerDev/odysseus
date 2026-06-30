@@ -12,10 +12,10 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
-from cortex.csuite import CSuiteOrchestrator, CSuiteRole, CompanyContext
-from cortex.smart_router import SmartRouter, TaskCategory, RoutingPriority
+from cortex.csuite import CSuiteOrchestrator, CSuiteRole
+from cortex.smart_router import SmartRouter, RoutingPriority
 from cortex.goals import decompose as goals_decompose
 
 logger = logging.getLogger(__name__)
@@ -174,6 +174,7 @@ def _get_tracker():
     global _tracker_instance
     if _tracker_instance is None:
         from cortex.goal_state import GoalTracker
+
         _tracker_instance = GoalTracker()
     return _tracker_instance
 
@@ -203,8 +204,11 @@ async def do_create_goal(content: str, owner: Optional[str] = None) -> Dict:
 
     try:
         from cortex.goals import decompose_and_track
+
         tracker = _get_tracker()
-        session = decompose_and_track(goal_id, goal, tracker, context=args.get("context"))
+        session = decompose_and_track(
+            goal_id, goal, tracker, context=args.get("context")
+        )
         return {
             "goal_id": session.goal_id,
             "status": session.status.value,
@@ -271,6 +275,7 @@ async def do_goal_transition(content: str, owner: Optional[str] = None) -> Dict:
         return {"error": "goal_id and status are required", "exit_code": 1}
 
     from cortex.goal_state import GoalStatus
+
     try:
         to_status = GoalStatus(status_str)
     except ValueError:
@@ -401,6 +406,7 @@ async def do_list_goals(content: str, owner: Optional[str] = None) -> Dict:
         args = {}
 
     from cortex.goal_state import GoalStatus
+
     status_filter = None
     if args.get("status"):
         try:
@@ -423,4 +429,3 @@ async def do_list_goals(content: str, owner: Optional[str] = None) -> Dict:
         ],
         "count": len(sessions),
     }
-

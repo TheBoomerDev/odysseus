@@ -1,8 +1,7 @@
 """internal_api_base() resolution + a guard that loopback call sites use it."""
-import importlib
+
 import pathlib
 
-import pytest
 
 import core.constants as cc
 
@@ -25,8 +24,14 @@ def test_app_port_is_honored(monkeypatch):
 
 def test_explicit_override_wins_and_is_stripped(monkeypatch):
     # Override beats APP_PORT and trailing slash is trimmed.
-    assert _base(monkeypatch, APP_PORT="7860",
-                 ODYSSEUS_INTERNAL_BASE="https://proxy.example/") == "https://proxy.example"
+    assert (
+        _base(
+            monkeypatch,
+            APP_PORT="7860",
+            ODYSSEUS_INTERNAL_BASE="https://proxy.example/",
+        )
+        == "https://proxy.example"
+    )
 
 
 def test_uses_127_not_localhost(monkeypatch):
@@ -49,4 +54,6 @@ def test_no_hardcoded_loopback_left_in_call_sites():
             stripped = ln.strip()
             if stripped.startswith("#"):
                 continue
-            assert "localhost:7000" not in ln, f"{rel}: hardcoded loopback URL: {ln.strip()}"
+            assert "localhost:7000" not in ln, (
+                f"{rel}: hardcoded loopback URL: {ln.strip()}"
+            )

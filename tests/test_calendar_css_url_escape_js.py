@@ -32,7 +32,11 @@ pytestmark = pytest.mark.skipif(not _HAS_NODE, reason="node binary not on PATH")
 def _run(js: str) -> str:
     proc = subprocess.run(
         ["node", "--input-type=module"],
-        input=js, capture_output=True, text=True, cwd=str(_REPO), timeout=30,
+        input=js,
+        capture_output=True,
+        text=True,
+        cwd=str(_REPO),
+        timeout=30,
     )
     assert proc.returncode == 0, proc.stderr
     return proc.stdout.strip()
@@ -53,7 +57,7 @@ def test_cssurlescape_doubles_backslashes_before_quotes():
     out = json.loads(_run(js))
     # one backslash -> two; the escape for "'" is not itself re-escaped
     assert out["backslash"] == r"a\\b"
-    assert out["trailing"] == "img\\\\"   # 'img\' -> 'img\\'
+    assert out["trailing"] == "img\\\\"  # 'img\' -> 'img\\'
     assert out["quote"] == r"a\'b"
     assert out["dquote"] == "a%22b"
 
@@ -73,7 +77,7 @@ def test_backslash_breakout_payload_cannot_close_the_url_string():
         """
     )
     out = json.loads(_run(js))
-    assert out["esc"] == "x\\\\"                       # doubled backslash
+    assert out["esc"] == "x\\\\"  # doubled backslash
     # The rendered declaration keeps the backslash doubled inside url('...').
     assert "url('x\\\\')" in out["css"]
 

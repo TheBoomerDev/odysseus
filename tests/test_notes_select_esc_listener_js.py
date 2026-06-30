@@ -7,6 +7,7 @@ in isolation), so — per the repo's convention for DOM-coupled guards (cf. the
 document.js diff-discard and memory.js filter-guard tests) — this asserts the
 tracked-handler pattern in source.
 """
+
 from pathlib import Path
 
 SRC = Path("static/js/notes.js").read_text(encoding="utf-8")
@@ -21,10 +22,15 @@ def test_select_esc_listener_is_tracked_not_anonymous():
 def test_select_esc_listener_removed_with_matching_capture_flag():
     # remove-before-add in openPanel + removal in both close paths => >= 3,
     # each with the `true` capture flag (a removal without it would not match).
-    removals = SRC.count("document.removeEventListener('keydown', _notesSelectEscHandler, true);")
+    removals = SRC.count(
+        "document.removeEventListener('keydown', _notesSelectEscHandler, true);"
+    )
     assert removals >= 3, removals
 
 
 def test_old_anonymous_capture_listener_is_gone():
     # the leak was an inline anonymous capture listener; it must no longer exist.
-    assert "addEventListener('keydown', (e) => {\n    if (e.key === 'Escape' && _selectMode)" not in SRC
+    assert (
+        "addEventListener('keydown', (e) => {\n    if (e.key === 'Escape' && _selectMode)"
+        not in SRC
+    )

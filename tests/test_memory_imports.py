@@ -28,7 +28,9 @@ def test_memory_service_uses_canonical_manager_api(tmp_path):
 
     service = MemoryService(str(tmp_path))
 
-    remembered = asyncio.run(service.remember("User prefers dark mode", session_id="sess-1"))
+    remembered = asyncio.run(
+        service.remember("User prefers dark mode", session_id="sess-1")
+    )
     assert remembered.text == "User prefers dark mode"
     assert remembered.session_id == "sess-1"
 

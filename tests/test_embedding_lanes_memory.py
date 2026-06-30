@@ -18,8 +18,16 @@ def test_memory_vector_store_writes_both_lanes_and_prefers_custom(monkeypatch):
 
     import src.embedding_lanes as lanes
 
-    monkeypatch.setattr(lanes, "_build_custom_client", lambda: FakeEmbedder(768, "nomic", "http://embeddings/v1"))
-    monkeypatch.setattr(lanes, "_build_fastembed_client", lambda: FakeEmbedder(384, "mini", "local://fastembed"))
+    monkeypatch.setattr(
+        lanes,
+        "_build_custom_client",
+        lambda: FakeEmbedder(768, "nomic", "http://embeddings/v1"),
+    )
+    monkeypatch.setattr(
+        lanes,
+        "_build_fastembed_client",
+        lambda: FakeEmbedder(384, "mini", "local://fastembed"),
+    )
 
     from src.memory_vector import MemoryVectorStore
 
@@ -35,8 +43,12 @@ def test_memory_vector_store_writes_both_lanes_and_prefers_custom(monkeypatch):
 
 
 def test_memory_search_merges_fallback_only_results_before_limit():
-    custom_collection = FakeCollection("odysseus_memories_custom", metadata={"embedding_lane": "custom"})
-    fast_collection = FakeCollection("odysseus_memories_fastembed", metadata={"embedding_lane": "fastembed"})
+    custom_collection = FakeCollection(
+        "odysseus_memories_custom", metadata={"embedding_lane": "custom"}
+    )
+    fast_collection = FakeCollection(
+        "odysseus_memories_fastembed", metadata={"embedding_lane": "fastembed"}
+    )
     custom_collection.add(
         ids=["old-1", "old-2"],
         embeddings=[[0.0] * 768, [0.0] * 768],
@@ -93,14 +105,18 @@ def test_memory_search_merges_fallback_only_results_before_limit():
 
 def test_memory_rebuild_does_not_reimport_legacy_collection(monkeypatch):
     fake = FakeChroma()
-    legacy = fake.get_or_create_collection("odysseus_memories", metadata={"hnsw:space": "cosine"})
+    legacy = fake.get_or_create_collection(
+        "odysseus_memories", metadata={"hnsw:space": "cosine"}
+    )
     legacy.add(
         ids=["stale-memory"],
         embeddings=[[0.0] * 384],
         documents=["stale legacy memory"],
         metadatas=[{"source": "memory"}],
     )
-    inactive_custom = fake.get_or_create_collection("odysseus_memories_custom", metadata={"embedding_lane": "custom"})
+    inactive_custom = fake.get_or_create_collection(
+        "odysseus_memories_custom", metadata={"embedding_lane": "custom"}
+    )
     inactive_custom.add(
         ids=["stale-custom"],
         embeddings=[[0.0] * 768],
@@ -112,7 +128,11 @@ def test_memory_rebuild_does_not_reimport_legacy_collection(monkeypatch):
     import src.embedding_lanes as lanes
 
     monkeypatch.setattr(lanes, "_build_custom_client", lambda: None)
-    monkeypatch.setattr(lanes, "_build_fastembed_client", lambda: FakeEmbedder(384, "mini", "local://fastembed"))
+    monkeypatch.setattr(
+        lanes,
+        "_build_fastembed_client",
+        lambda: FakeEmbedder(384, "mini", "local://fastembed"),
+    )
 
     from src.memory_vector import MemoryVectorStore
 
@@ -124,13 +144,19 @@ def test_memory_rebuild_does_not_reimport_legacy_collection(monkeypatch):
     assert "odysseus_memories" not in fake.collections
     assert "odysseus_memories_custom" not in fake.collections
     assert fake.collections["odysseus_memories_fastembed"].count() == 1
-    assert fake.collections["odysseus_memories_fastembed"].get()["ids"] == ["current-memory"]
+    assert fake.collections["odysseus_memories_fastembed"].get()["ids"] == [
+        "current-memory"
+    ]
 
 
 def test_memory_remove_deletes_inactive_lane_collection(monkeypatch):
     fake = FakeChroma()
-    custom_collection = fake.get_or_create_collection("odysseus_memories_custom", metadata={"embedding_lane": "custom"})
-    fast_collection = fake.get_or_create_collection("odysseus_memories_fastembed", metadata={"embedding_lane": "fastembed"})
+    custom_collection = fake.get_or_create_collection(
+        "odysseus_memories_custom", metadata={"embedding_lane": "custom"}
+    )
+    fast_collection = fake.get_or_create_collection(
+        "odysseus_memories_fastembed", metadata={"embedding_lane": "fastembed"}
+    )
     custom_collection.add(
         ids=["mem-1"],
         embeddings=[[0.0] * 768],
@@ -174,8 +200,16 @@ def test_memory_rebuild_continues_when_custom_lane_fails(monkeypatch):
 
     import src.embedding_lanes as lanes
 
-    monkeypatch.setattr(lanes, "_build_custom_client", lambda: FailingEmbedder(768, "nomic", "http://embeddings/v1"))
-    monkeypatch.setattr(lanes, "_build_fastembed_client", lambda: FakeEmbedder(384, "mini", "local://fastembed"))
+    monkeypatch.setattr(
+        lanes,
+        "_build_custom_client",
+        lambda: FailingEmbedder(768, "nomic", "http://embeddings/v1"),
+    )
+    monkeypatch.setattr(
+        lanes,
+        "_build_fastembed_client",
+        lambda: FakeEmbedder(384, "mini", "local://fastembed"),
+    )
 
     from src.memory_vector import MemoryVectorStore
 
@@ -184,4 +218,6 @@ def test_memory_rebuild_continues_when_custom_lane_fails(monkeypatch):
 
     assert fake.collections["odysseus_memories_custom"].count() == 0
     assert fake.collections["odysseus_memories_fastembed"].count() == 1
-    assert fake.collections["odysseus_memories_fastembed"].get()["ids"] == ["current-memory"]
+    assert fake.collections["odysseus_memories_fastembed"].get()["ids"] == [
+        "current-memory"
+    ]

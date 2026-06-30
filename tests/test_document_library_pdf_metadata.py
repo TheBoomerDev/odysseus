@@ -1,6 +1,9 @@
 from types import SimpleNamespace
 
-from routes.document_routes import _aggregate_language_facets, _library_language_for_document
+from routes.document_routes import (
+    _aggregate_language_facets,
+    _library_language_for_document,
+)
 
 
 def test_pdf_backed_plain_document_displays_as_pdf_in_library():
@@ -25,12 +28,18 @@ def test_pdf_backed_form_document_displays_as_pdf_in_library():
 
 
 def test_non_pdf_library_language_is_unchanged():
-    assert _library_language_for_document(
-        SimpleNamespace(language="python", current_content="print('ok')\n")
-    ) == "python"
-    assert _library_language_for_document(
-        SimpleNamespace(language=None, current_content="plain text")
-    ) == "text"
+    assert (
+        _library_language_for_document(
+            SimpleNamespace(language="python", current_content="print('ok')\n")
+        )
+        == "python"
+    )
+    assert (
+        _library_language_for_document(
+            SimpleNamespace(language=None, current_content="plain text")
+        )
+        == "text"
+    )
 
 
 def test_pdf_language_facet_counts_are_summed():

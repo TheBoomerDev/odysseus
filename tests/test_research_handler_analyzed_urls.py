@@ -85,7 +85,10 @@ def test_research_report_uses_full_analyzed_url_set_not_just_findings():
     ]
     analyzed_urls = [
         {"url": "https://example.com/finding", "title": "Finding Source"},
-        {"url": "https://example.com/fetched-no-finding", "title": "Fetched No Finding"},
+        {
+            "url": "https://example.com/fetched-no-finding",
+            "title": "Fetched No Finding",
+        },
         {"url": "https://example.com/finding", "title": "Duplicate"},
     ]
 
@@ -95,5 +98,8 @@ def test_research_report_uses_full_analyzed_url_set_not_just_findings():
     analyzed_section = report.split("### Analyzed URLs", 1)[1].split("<details>", 1)[0]
     assert "https://example.com/fetched-no-finding" not in sources_section
     assert "1. [Finding Source](https://example.com/finding)" in analyzed_section
-    assert "2. [Fetched No Finding](https://example.com/fetched-no-finding)" in analyzed_section
+    assert (
+        "2. [Fetched No Finding](https://example.com/fetched-no-finding)"
+        in analyzed_section
+    )
     assert analyzed_section.count("https://example.com/finding") == 1

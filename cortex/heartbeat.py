@@ -13,11 +13,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -184,7 +183,10 @@ class HeartbeatManager:
             logger.error("Heartbeat tick critical error: %s", e)
             result.errors.append(f"Critical error: {e}")
 
-        result.duration_ms = round((time.time() - tick_start) * 1000, 2)
+        try:
+            result.duration_ms = round((time.time() - tick_start) * 1000, 2)
+        except Exception:
+            result.duration_ms = 0.0
 
         if result.errors:
             logger.warning(
@@ -200,7 +202,9 @@ class HeartbeatManager:
         status = HeartbeatStatus(
             last_tick=self._last_tick.isoformat() if self._last_tick else None,
             healthy=self._healthy,
-            uptime_seconds=round(time.time() - self._start_time, 1) if self._start_time else 0.0,
+            uptime_seconds=round(time.time() - self._start_time, 1)
+            if self._start_time
+            else 0.0,
             db_connected=False,
             redis_connected=False,
             total_ticks=self._total_ticks,
@@ -280,7 +284,8 @@ class HeartbeatManager:
                         except Exception as e:
                             logger.error("on_goal_failed callback error: %s", e)
                 except Exception as e:
-                    logger.error("Failed to mark goal %s as failed: %s",
-                                 goal.get("id", "?"), e)
+                    logger.error(
+                        "Failed to mark goal %s as failed: %s", goal.get("id", "?"), e
+                    )
 
         return {"found": found, "marked_failed": marked_failed}

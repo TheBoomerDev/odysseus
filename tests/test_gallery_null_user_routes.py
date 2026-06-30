@@ -94,7 +94,9 @@ def test_auth_enabled_null_user_gallery_routes_fail_closed(monkeypatch, tmp_path
     }
 
 
-def test_auth_disabled_null_user_gallery_routes_keep_single_user_mode(monkeypatch, tmp_path):
+def test_auth_disabled_null_user_gallery_routes_keep_single_user_mode(
+    monkeypatch, tmp_path
+):
     monkeypatch.setenv("AUTH_ENABLED", "false")
     client = _client_with_gallery(monkeypatch, tmp_path)
 

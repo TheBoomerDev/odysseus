@@ -13,6 +13,7 @@ and ``services.youtube.youtube_handler`` — that silently drifted:
 These tests pin the two import paths to one module object and verify the shared
 state and the broadened URL parsing.
 """
+
 import sys
 import types
 

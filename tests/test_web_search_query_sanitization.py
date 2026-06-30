@@ -22,6 +22,7 @@ success, LLM exception, empty LLM result).
 This is intentionally a narrow interim/defensive fix for #4547; it does not
 replace the generated-query flow from #4557.
 """
+
 from src.chat_processor import ChatProcessor, _clean_search_query
 
 

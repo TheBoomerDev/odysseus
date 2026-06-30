@@ -4,6 +4,7 @@ load_settings() already catches PermissionError, but load_features() did not, so
 an unreadable data/features.json (e.g. root-owned after a deploy) raised instead
 of falling back to DEFAULT_FEATURES, taking down GET /api/auth/features.
 """
+
 import builtins
 
 import src.settings as settings

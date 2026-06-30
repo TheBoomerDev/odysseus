@@ -34,7 +34,9 @@ from tests.helpers.import_state import clear_module, preserve_import_state
 # — the local SM/SR bindings keep their captured stub modules for this file's own
 # assertions.
 _TEMP_STUBS = ("core.database", "core.models")
-with preserve_import_state(*_TEMP_STUBS, "core.session_manager", "routes.session_routes"):
+with preserve_import_state(
+    *_TEMP_STUBS, "core.session_manager", "routes.session_routes"
+):
     for _name in _TEMP_STUBS:
         sys.modules[_name] = MagicMock(name=_name)
     if isinstance(sys.modules.get("core.session_manager"), MagicMock):
@@ -73,6 +75,7 @@ def _manager_with(sessions):
 
 # --- route layer: _verify_session_owner ghost fallback ---------------------
 
+
 def test_owned_ghost_is_allowed_when_manager_passed(monkeypatch):
     # No DB row, but the caller owns the in-memory ghost -> must NOT raise.
     monkeypatch.setattr(SR, "SessionLocal", _session_local_returning(_MISSING))
@@ -85,7 +88,9 @@ def test_ghost_owned_by_another_user_still_404(monkeypatch):
     monkeypatch.setattr(SR, "SessionLocal", _session_local_returning(_MISSING))
     sm = SimpleNamespace(sessions={"ghost": SimpleNamespace(owner="bob")})
     with pytest.raises(HTTPException) as exc:
-        SR._verify_session_owner(_req(api_token=False, current_user="alice"), "ghost", sm)
+        SR._verify_session_owner(
+            _req(api_token=False, current_user="alice"), "ghost", sm
+        )
     assert exc.value.status_code == 404
 
 
@@ -113,6 +118,7 @@ def test_unauthenticated_still_403(monkeypatch):
 
 
 # --- manager layer: delete_session clears memory-only ghosts ---------------
+
 
 def test_manager_deletes_memory_only_ghost(monkeypatch):
     # No DB row, but the session is in memory -> delete it and report success.

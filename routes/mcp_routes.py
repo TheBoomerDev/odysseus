@@ -1,5 +1,6 @@
 # routes/mcp_routes.py
 """MCP (Model Context Protocol) server management routes."""
+
 import json
 import os
 import uuid
@@ -13,7 +14,7 @@ import httpx
 
 from core.database import McpServer, SessionLocal
 from core.middleware import require_admin
-from src.constants import DATA_DIR, MCP_OAUTH_DIR
+from src.constants import MCP_OAUTH_DIR
 from src.mcp_manager import McpManager
 
 logger = logging.getLogger(__name__)
@@ -69,7 +70,9 @@ def _mcp_oauth_token_missing(oauth_cfg, *, strict: bool = True) -> bool:
     if not isinstance(oauth_cfg, dict):
         return False
     try:
-        token_file = _resolve_mcp_oauth_path(oauth_cfg.get("token_file", ""), "token_file")
+        token_file = _resolve_mcp_oauth_path(
+            oauth_cfg.get("token_file", ""), "token_file"
+        )
     except HTTPException:
         if strict:
             raise
@@ -111,6 +114,7 @@ def _load_disabled_map():
 def _mcp_oauth_redirect_uri() -> str:
     """Shared callback URL for legacy Google and generic MCP OAuth flows."""
     from src.mcp_oauth import REDIRECT_URI
+
     return REDIRECT_URI
 
 
@@ -131,26 +135,30 @@ def setup_mcp_routes(mcp_manager: McpManager):
                 needs_oauth = False
                 if oauth_cfg:
                     needs_oauth = _mcp_oauth_token_missing(oauth_cfg, strict=False)
-                disabled_list = json.loads(srv.disabled_tools) if srv.disabled_tools else []
+                disabled_list = (
+                    json.loads(srv.disabled_tools) if srv.disabled_tools else []
+                )
                 total_tools = status.get("tool_count", 0)
-                result.append({
-                    "id": srv.id,
-                    "name": srv.name,
-                    "transport": srv.transport,
-                    "command": srv.command,
-                    "args": json.loads(srv.args) if srv.args else [],
-                    "env": json.loads(srv.env) if srv.env else {},
-                    "url": srv.url,
-                    "is_enabled": srv.is_enabled,
-                    "status": status.get("status", "disconnected"),
-                    "tool_count": total_tools,
-                    "disabled_tool_count": len(disabled_list),
-                    "enabled_tool_count": max(0, total_tools - len(disabled_list)),
-                    "error": status.get("error"),
-                    "auth_url": status.get("auth_url"),
-                    "has_oauth": oauth_cfg is not None,
-                    "needs_oauth": needs_oauth,
-                })
+                result.append(
+                    {
+                        "id": srv.id,
+                        "name": srv.name,
+                        "transport": srv.transport,
+                        "command": srv.command,
+                        "args": json.loads(srv.args) if srv.args else [],
+                        "env": json.loads(srv.env) if srv.env else {},
+                        "url": srv.url,
+                        "is_enabled": srv.is_enabled,
+                        "status": status.get("status", "disconnected"),
+                        "tool_count": total_tools,
+                        "disabled_tool_count": len(disabled_list),
+                        "enabled_tool_count": max(0, total_tools - len(disabled_list)),
+                        "error": status.get("error"),
+                        "auth_url": status.get("auth_url"),
+                        "has_oauth": oauth_cfg is not None,
+                        "needs_oauth": needs_oauth,
+                    }
+                )
             return result
         finally:
             db.close()
@@ -197,7 +205,9 @@ def setup_mcp_routes(mcp_manager: McpManager):
         parsed_oauth_config = None
         if oauth_config:
             try:
-                parsed_oauth_config = _sanitize_mcp_oauth_config(json.loads(oauth_config))
+                parsed_oauth_config = _sanitize_mcp_oauth_config(
+                    json.loads(oauth_config)
+                )
             except json.JSONDecodeError:
                 pass
         _apply_mcp_oauth_env(parsed_env, parsed_oauth_config)
@@ -246,7 +256,9 @@ def setup_mcp_routes(mcp_manager: McpManager):
                 env=json.dumps(parsed_env),
                 url=url,
                 is_enabled=True,
-                oauth_config=json.dumps(parsed_oauth_config) if parsed_oauth_config else None,
+                oauth_config=json.dumps(parsed_oauth_config)
+                if parsed_oauth_config
+                else None,
             )
             db.add(srv)
             db.commit()
@@ -276,9 +288,13 @@ def setup_mcp_routes(mcp_manager: McpManager):
             "id": server_id,
             "name": name,
             "connected": connected,
-            "status": "needs_oauth" if needs_oauth else status.get("status", "disconnected"),
+            "status": "needs_oauth"
+            if needs_oauth
+            else status.get("status", "disconnected"),
             "tool_count": status.get("tool_count", 0),
-            "error": "OAuth authorization required" if needs_oauth else status.get("error"),
+            "error": "OAuth authorization required"
+            if needs_oauth
+            else status.get("error"),
             "needs_oauth": needs_oauth,
             "needs_auth": needs_auth,
             "auth_url": status.get("auth_url"),
@@ -321,7 +337,9 @@ def setup_mcp_routes(mcp_manager: McpManager):
             db.close()
 
     @router.patch("/servers/{server_id}")
-    async def toggle_server(server_id: str, request: Request, is_enabled: str = Form(...)):
+    async def toggle_server(
+        server_id: str, request: Request, is_enabled: str = Form(...)
+    ):
         """Enable or disable an MCP server."""
         require_admin(request)
         db = SessionLocal()
@@ -464,7 +482,10 @@ def setup_mcp_routes(mcp_manager: McpManager):
                 "prompt": "consent",
                 "state": server_id,
             }
-            auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
+            auth_url = (
+                "https://accounts.google.com/o/oauth2/v2/auth?"
+                + urllib.parse.urlencode(params)
+            )
 
             # Determine if user is accessing from the same machine
             host = request.headers.get("host", "")
@@ -475,7 +496,9 @@ def setup_mcp_routes(mcp_manager: McpManager):
                 return RedirectResponse(auth_url)
             else:
                 # Remote device — show paste-back page
-                return HTMLResponse(_oauth_authorize_page(auth_url, server_id, host, redirect_uri))
+                return HTMLResponse(
+                    _oauth_authorize_page(auth_url, server_id, host, redirect_uri)
+                )
         finally:
             db.close()
 
@@ -485,17 +508,22 @@ def setup_mcp_routes(mcp_manager: McpManager):
         pending-state registry; Google flows fall through to the legacy path."""
         require_admin(request)
         from src.mcp_oauth import resolve_pending
+
         if resolve_pending(state, code):
-            return HTMLResponse(_oauth_result_page(
-                "Authorization Successful",
-                "The MCP server is connecting. You can close this window and return to Odysseus.",
-                success=True,
-            ))
+            return HTMLResponse(
+                _oauth_result_page(
+                    "Authorization Successful",
+                    "The MCP server is connecting. You can close this window and return to Odysseus.",
+                    success=True,
+                )
+            )
         # Legacy Google path: state is the server_id
         return await _exchange_and_connect(state, code, request)
 
     @router.post("/oauth/exchange/{server_id}")
-    async def oauth_exchange(server_id: str, request: Request, callback_url: str = Form(...)):
+    async def oauth_exchange(
+        server_id: str, request: Request, callback_url: str = Form(...)
+    ):
         """Manual code exchange — user pastes the callback URL from their browser."""
         require_admin(request)
         try:
@@ -503,20 +531,31 @@ def setup_mcp_routes(mcp_manager: McpManager):
             params = urllib.parse.parse_qs(parsed.query)
             code = params.get("code", [None])[0]
             if not code:
-                return HTMLResponse(_oauth_result_page("Error", "No authorization code found in the URL. Make sure you copied the full URL from your browser."), status_code=400)
+                return HTMLResponse(
+                    _oauth_result_page(
+                        "Error",
+                        "No authorization code found in the URL. Make sure you copied the full URL from your browser.",
+                    ),
+                    status_code=400,
+                )
         except Exception:
-            return HTMLResponse(_oauth_result_page("Error", "Invalid URL format."), status_code=400)
+            return HTMLResponse(
+                _oauth_result_page("Error", "Invalid URL format."), status_code=400
+            )
 
         # Generic MCP OAuth: if the pasted URL carries a state we are waiting on,
         # resolve it directly (the background connect finishes the handshake).
         state = params.get("state", [None])[0]
         from src.mcp_oauth import resolve_pending
+
         if state and resolve_pending(state, code):
-            return HTMLResponse(_oauth_result_page(
-                "Authorization Successful",
-                "The MCP server is connecting. You can close this window and return to Odysseus.",
-                success=True,
-            ))
+            return HTMLResponse(
+                _oauth_result_page(
+                    "Authorization Successful",
+                    "The MCP server is connecting. You can close this window and return to Odysseus.",
+                    success=True,
+                )
+            )
 
         return await _exchange_and_connect(server_id, code, request)
 
@@ -526,9 +565,13 @@ def setup_mcp_routes(mcp_manager: McpManager):
         try:
             srv = db.query(McpServer).filter(McpServer.id == server_id).first()
             if not srv:
-                return HTMLResponse(_oauth_result_page("Error", "Server not found."), status_code=404)
+                return HTMLResponse(
+                    _oauth_result_page("Error", "Server not found."), status_code=404
+                )
             if not srv.oauth_config:
-                return HTMLResponse(_oauth_result_page("Error", "No OAuth config."), status_code=400)
+                return HTMLResponse(
+                    _oauth_result_page("Error", "No OAuth config."), status_code=400
+                )
 
             oauth_cfg = _sanitize_mcp_oauth_config(json.loads(srv.oauth_config))
             keys_file = oauth_cfg.get("keys_file", "")
@@ -559,7 +602,12 @@ def setup_mcp_routes(mcp_manager: McpManager):
             if resp.status_code != 200:
                 err = resp.text
                 logger.error(f"OAuth token exchange failed: {err}")
-                return HTMLResponse(_oauth_result_page("Authorization Failed", f"Google returned an error: {err}"), status_code=400)
+                return HTMLResponse(
+                    _oauth_result_page(
+                        "Authorization Failed", f"Google returned an error: {err}"
+                    ),
+                    status_code=400,
+                )
 
             tokens = resp.json()
             logger.info(f"OAuth tokens received for server {server_id}")
@@ -586,20 +634,26 @@ def setup_mcp_routes(mcp_manager: McpManager):
             if connected:
                 status = mcp_manager.get_server_status(server_id)
                 tool_count = status.get("tool_count", 0)
-                return HTMLResponse(_oauth_result_page(
-                    "Authorization Successful",
-                    f"{srv.name} connected with {tool_count} tools. You can close this window.",
-                    success=True,
-                ))
+                return HTMLResponse(
+                    _oauth_result_page(
+                        "Authorization Successful",
+                        f"{srv.name} connected with {tool_count} tools. You can close this window.",
+                        success=True,
+                    )
+                )
             else:
                 status = mcp_manager.get_server_status(server_id)
-                return HTMLResponse(_oauth_result_page(
-                    "Authorized but Connection Failed",
-                    f"Tokens saved, but the server failed to connect: {status.get('error', 'unknown error')}. Try reconnecting from Settings.",
-                ))
+                return HTMLResponse(
+                    _oauth_result_page(
+                        "Authorized but Connection Failed",
+                        f"Tokens saved, but the server failed to connect: {status.get('error', 'unknown error')}. Try reconnecting from Settings.",
+                    )
+                )
         except HTTPException as e:
             logger.warning(f"OAuth callback rejected: {e.detail}")
-            return HTMLResponse(_oauth_result_page("Error", str(e.detail)), status_code=e.status_code)
+            return HTMLResponse(
+                _oauth_result_page("Error", str(e.detail)), status_code=e.status_code
+            )
         except Exception as e:
             logger.exception(f"OAuth callback error: {e}")
             return HTMLResponse(_oauth_result_page("Error", str(e)), status_code=500)

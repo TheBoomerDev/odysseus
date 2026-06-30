@@ -7,6 +7,7 @@ from fastapi import HTTPException
 
 def _generated_images_module():
     from src import generated_images
+
     return generated_images
 
 
@@ -22,8 +23,12 @@ def test_generated_image_path_allows_safe_existing_file(tmp_path, monkeypatch):
     assert generated_images.resolve_generated_image_path(filename) == image_path
 
 
-@pytest.mark.parametrize("filename", ["../../secret.png", "zzzzzzzz.png", "aaaaaaa.png", None, 12345])
-def test_generated_image_path_rejects_invalid_filenames(tmp_path, monkeypatch, filename):
+@pytest.mark.parametrize(
+    "filename", ["../../secret.png", "zzzzzzzz.png", "aaaaaaa.png", None, 12345]
+)
+def test_generated_image_path_rejects_invalid_filenames(
+    tmp_path, monkeypatch, filename
+):
     generated_images = _generated_images_module()
     image_dir = tmp_path / "generated_images"
     image_dir.mkdir()
@@ -57,7 +62,9 @@ def test_generated_image_path_rejects_symlink_escape(tmp_path, monkeypatch):
 def test_generated_image_headers_include_nosniff():
     generated_images = _generated_images_module()
 
-    assert generated_images.GENERATED_IMAGE_HEADERS["X-Content-Type-Options"] == "nosniff"
+    assert (
+        generated_images.GENERATED_IMAGE_HEADERS["X-Content-Type-Options"] == "nosniff"
+    )
     assert (
         generated_images.GENERATED_IMAGE_HEADERS["Cache-Control"]
         == "public, max-age=31536000, immutable"

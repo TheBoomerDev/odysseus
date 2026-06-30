@@ -16,7 +16,9 @@ from core.middleware import is_cors_preflight
 
 
 def test_genuine_preflight_is_detected():
-    assert is_cors_preflight("OPTIONS", {"access-control-request-method": "POST"}) is True
+    assert (
+        is_cors_preflight("OPTIONS", {"access-control-request-method": "POST"}) is True
+    )
 
 
 def test_bare_options_is_not_a_preflight():

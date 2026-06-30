@@ -9,6 +9,7 @@ their text message permanently corrupted into a Python list on the next
 session hydration. The fix restricts the round-trip to lists whose elements
 are all recognized content-block types (text/image_url/audio/...).
 """
+
 import tempfile
 import uuid
 
@@ -34,6 +35,7 @@ _TS = sessionmaker(bind=_ENGINE, autoflush=False, autocommit=False)
 @pytest.fixture
 def manager(monkeypatch):
     import core.session_manager as sm
+
     monkeypatch.setattr(sm, "SessionLocal", _TS)
     mgr = sm.SessionManager.__new__(sm.SessionManager)
     mgr.sessions = {}
@@ -43,9 +45,17 @@ def manager(monkeypatch):
 def _make_session(sid, owner="alice"):
     db = _TS()
     try:
-        db.add(DbSession(id=sid, owner=owner, name="chat",
-                         endpoint_url="http://x", model="gpt-4o",
-                         archived=False, message_count=1))
+        db.add(
+            DbSession(
+                id=sid,
+                owner=owner,
+                name="chat",
+                endpoint_url="http://x",
+                model="gpt-4o",
+                archived=False,
+                message_count=1,
+            )
+        )
         db.commit()
     finally:
         db.close()

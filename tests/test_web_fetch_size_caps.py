@@ -5,6 +5,7 @@ server downloads, parses, and caches. Soft cap by default with a truncation
 notice, per-call override clamped to the hard cap, and a pre-buffer refusal
 when Content-Length already exceeds the hard ceiling.
 """
+
 import json
 from contextlib import contextmanager
 
@@ -17,8 +18,14 @@ from services.search import content as content_mod
 class _FakeStream:
     """Stands in for the httpx.stream(...) context manager."""
 
-    def __init__(self, body: bytes, content_type="text/plain", content_length=None,
-                 status_code=200, chunk=8192):
+    def __init__(
+        self,
+        body: bytes,
+        content_type="text/plain",
+        content_length=None,
+        status_code=200,
+        chunk=8192,
+    ):
         self._body = body
         self._chunk = chunk
         self.status_code = status_code
@@ -32,7 +39,7 @@ class _FakeStream:
     def iter_bytes(self):
         for i in range(0, len(self._body), self._chunk):
             self.body_reads += 1
-            yield self._body[i:i + self._chunk]
+            yield self._body[i : i + self._chunk]
 
 
 @pytest.fixture
@@ -46,6 +53,7 @@ def _patch_stream(monkeypatch, fake):
     @contextmanager
     def fake_stream(method, url, **kwargs):
         yield fake
+
     monkeypatch.setattr(content_mod.httpx, "stream", fake_stream)
     return fake
 
@@ -125,6 +133,7 @@ def test_fetch_requests_identity_encoding(monkeypatch, no_cache):
     def fake_stream(method, url, **kwargs):
         seen["headers"] = kwargs.get("headers") or {}
         yield _FakeStream(b"hello")
+
     monkeypatch.setattr(content_mod.httpx, "stream", fake_stream)
 
     content_mod.fetch_webpage_content("https://example.com/a.txt")
@@ -162,11 +171,14 @@ def test_oversized_title_does_not_hide_partial_notice(monkeypatch):
         }
 
     import src.search.content as alias_mod
+
     monkeypatch.setattr(alias_mod, "fetch_webpage_content", fake_fetch)
 
-    out = asyncio.run(WebFetchTool().execute(
-        json.dumps({"url": "https://example.com/big.txt"}), ctx={}
-    ))
+    out = asyncio.run(
+        WebFetchTool().execute(
+            json.dumps({"url": "https://example.com/big.txt"}), ctx={}
+        )
+    )
     assert out["exit_code"] == 0
     assert out["output"].startswith("[partial content:")
     assert '"full": true' in out["output"]
@@ -190,17 +202,22 @@ def test_tool_layer_emits_partial_notice_and_parses_full(monkeypatch):
         }
 
     import src.search.content as alias_mod
+
     monkeypatch.setattr(alias_mod, "fetch_webpage_content", fake_fetch)
 
-    out = asyncio.run(WebFetchTool().execute(
-        json.dumps({"url": "https://example.com/big.txt"}), ctx={}
-    ))
+    out = asyncio.run(
+        WebFetchTool().execute(
+            json.dumps({"url": "https://example.com/big.txt"}), ctx={}
+        )
+    )
     assert out["exit_code"] == 0
     assert "[partial content:" in out["output"]
     assert '"full": true' in out["output"]
     assert calls["max_bytes"] is None
 
-    asyncio.run(WebFetchTool().execute(
-        json.dumps({"url": "https://example.com/big.txt", "full": True}), ctx={}
-    ))
+    asyncio.run(
+        WebFetchTool().execute(
+            json.dumps({"url": "https://example.com/big.txt", "full": True}), ctx={}
+        )
+    )
     assert calls["max_bytes"] == WEB_FETCH_HARD_MAX_BYTES

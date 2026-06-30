@@ -12,6 +12,7 @@ close-button handler includes the reset.  They cover:
   • error toast                  – showError
   • action toast                 – showToast with action opts
 """
+
 import re
 from pathlib import Path
 
@@ -26,6 +27,7 @@ def _read_ui():
 # ---------------------------------------------------------------------------
 # Helpers – extract the close-button event-handler bodies from each function.
 # ---------------------------------------------------------------------------
+
 
 def _extract_function(src: str, func_name: str) -> str:
     """Return the full body of *func_name* (exported or not)."""
@@ -80,6 +82,7 @@ def _extract_close_handler(func_body: str) -> str:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_showToast_close_handler_resets_pointer_events():
     """showToast's × handler must clear pointer-events so an action-toast

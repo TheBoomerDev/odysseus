@@ -4,6 +4,7 @@
 empty host to imaplib — `imaplib.IMAP4("", 993)` silently dials localhost:993
 and surfaces a confusing "[Errno 111] Connection refused" on every inbox poll.
 """
+
 import os
 import tempfile
 from pathlib import Path
@@ -25,7 +26,7 @@ _SEND_ONLY_CFG = {
     "smtp_port": 465,
     "smtp_user": "noreply@example.org",
     "smtp_password": "secret",
-    "imap_host": "",          # <- the send-only marker
+    "imap_host": "",  # <- the send-only marker
     "imap_port": 993,
     "imap_user": "",
     "imap_password": "",
@@ -41,7 +42,9 @@ def test_not_configured_error_is_runtime_error():
 
 
 def test_imap_connect_send_only_raises_and_never_dials(monkeypatch):
-    monkeypatch.setattr(helpers, "_get_email_config", lambda *a, **k: dict(_SEND_ONLY_CFG))
+    monkeypatch.setattr(
+        helpers, "_get_email_config", lambda *a, **k: dict(_SEND_ONLY_CFG)
+    )
 
     def _boom(*a, **k):  # opening a connection means we dialed an empty host
         raise AssertionError("send-only account must not open an IMAP connection")
@@ -55,7 +58,9 @@ def test_imap_connect_send_only_raises_and_never_dials(monkeypatch):
 def test_imap_connect_with_host_still_connects(monkeypatch):
     # Guard must not regress normal accounts: a configured imap_host still
     # reaches _open_imap_connection.
-    cfg = dict(_SEND_ONLY_CFG, imap_host="imap.example.org", imap_user="u", imap_password="p")
+    cfg = dict(
+        _SEND_ONLY_CFG, imap_host="imap.example.org", imap_user="u", imap_password="p"
+    )
     monkeypatch.setattr(helpers, "_get_email_config", lambda *a, **k: cfg)
 
     opened = {}

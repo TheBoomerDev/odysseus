@@ -29,12 +29,14 @@ async def _run_scheduled_serve(tmp_path, monkeypatch, server):
     message, ok = await builtin_actions.action_cookbook_serve(
         owner="alice",
         task_name="test-serve",
-        command=json.dumps({
-            "repo_id": "org/model",
-            "cmd": "llama-server --port 8080",
-            "host": "gpu-box",
-            "end_after_min": 30,
-        }),
+        command=json.dumps(
+            {
+                "repo_id": "org/model",
+                "cmd": "llama-server --port 8080",
+                "host": "gpu-box",
+                "end_after_min": 30,
+            }
+        ),
     )
 
     assert ok is True, message
@@ -44,7 +46,9 @@ async def _run_scheduled_serve(tmp_path, monkeypatch, server):
 
 
 @pytest.mark.asyncio
-async def test_scheduled_serve_preserves_server_ssh_port_and_platform(tmp_path, monkeypatch):
+async def test_scheduled_serve_preserves_server_ssh_port_and_platform(
+    tmp_path, monkeypatch
+):
     task = await _run_scheduled_serve(
         tmp_path,
         monkeypatch,

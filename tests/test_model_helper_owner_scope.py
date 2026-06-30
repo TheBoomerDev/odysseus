@@ -8,7 +8,10 @@ def _function_source(path: str, name: str) -> str:
     source = Path(path).read_text(encoding="utf-8")
     tree = ast.parse(source)
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name:
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == name
+        ):
             return ast.get_source_segment(source, node) or ""
     raise AssertionError(f"{name} not found in {path}")
 

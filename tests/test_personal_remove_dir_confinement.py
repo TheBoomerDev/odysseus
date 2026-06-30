@@ -9,6 +9,7 @@ the parity fix.
 ``_resolve_allowed_personal_dir`` is a closure inside ``setup_personal_routes``,
 so this is a source-level test, matching test_personal_dir_symlink_escape.py.
 """
+
 import ast
 from pathlib import Path
 
@@ -18,7 +19,10 @@ SRC = Path(__file__).resolve().parent.parent / "routes" / "personal_routes.py"
 def _function_source(src_text: str, name: str) -> str:
     tree = ast.parse(src_text)
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name:
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == name
+        ):
             return ast.get_source_segment(src_text, node)
     raise AssertionError(f"{name} not found in {SRC}")
 

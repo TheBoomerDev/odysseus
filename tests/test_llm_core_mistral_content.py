@@ -18,6 +18,7 @@ These tests pin the contract: string passthrough, the array shape, and the
 edge cases (empty, garbage, missing fields) so a refactor doesn't silently
 drop thinking content or break non-Mistral providers.
 """
+
 from src.llm_core import _normalize_mistral_content
 
 
@@ -148,7 +149,11 @@ def test_thinking_block_with_string_inner():
 def test_thinking_block_with_empty_text_field():
     """Empty text fields don't pollute the output."""
     content = [
-        {"type": "thinking", "thinking": [{"type": "text", "text": ""}], "closed": True},
+        {
+            "type": "thinking",
+            "thinking": [{"type": "text", "text": ""}],
+            "closed": True,
+        },
         {"type": "text", "text": ""},
     ]
     text, thinking = _normalize_mistral_content(content)

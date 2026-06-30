@@ -4,6 +4,7 @@ The tool is a pure UI-control marker: it does no I/O. `execute_tool_block`
 returns an `ask_user` payload that the agent loop turns into an `ask_user` SSE
 event and then ends the turn so the chat waits for the user's selection.
 """
+
 import asyncio
 import json
 
@@ -18,13 +19,15 @@ def _run(content):
 
 
 def test_valid_question_returns_ask_user_payload():
-    content = json.dumps({
-        "question": "Which database should I use?",
-        "options": [
-            {"label": "PostgreSQL", "description": "Relational, ACID"},
-            {"label": "SQLite", "description": "Zero-config, file-based"},
-        ],
-    })
+    content = json.dumps(
+        {
+            "question": "Which database should I use?",
+            "options": [
+                {"label": "PostgreSQL", "description": "Relational, ACID"},
+                {"label": "SQLite", "description": "Zero-config, file-based"},
+            ],
+        }
+    )
     desc, result = _run(content)
     assert result.get("exit_code") == 0
     assert "error" not in result
@@ -37,11 +40,13 @@ def test_valid_question_returns_ask_user_payload():
 
 
 def test_multi_flag_is_carried():
-    content = json.dumps({
-        "question": "Which features?",
-        "options": [{"label": "A"}, {"label": "B"}, {"label": "C"}],
-        "multi": True,
-    })
+    content = json.dumps(
+        {
+            "question": "Which features?",
+            "options": [{"label": "A"}, {"label": "B"}, {"label": "C"}],
+            "multi": True,
+        }
+    )
     _, result = _run(content)
     assert result["ask_user"]["multi"] is True
     assert len(result["ask_user"]["options"]) == 3
@@ -55,10 +60,12 @@ def test_string_options_are_accepted():
 
 
 def test_options_are_capped_at_six():
-    content = json.dumps({
-        "question": "Pick",
-        "options": [{"label": f"opt{i}"} for i in range(10)],
-    })
+    content = json.dumps(
+        {
+            "question": "Pick",
+            "options": [{"label": f"opt{i}"} for i in range(10)],
+        }
+    )
     _, result = _run(content)
     assert len(result["ask_user"]["options"]) == 6
 
@@ -78,7 +85,12 @@ def test_missing_question_is_rejected():
 
 def test_serializer_round_trips_structured_args():
     from src.tool_schemas import function_call_to_tool_block
-    args = {"question": "Q?", "options": [{"label": "A"}, {"label": "B"}], "multi": True}
+
+    args = {
+        "question": "Q?",
+        "options": [{"label": "A"}, {"label": "B"}],
+        "multi": True,
+    }
     block = function_call_to_tool_block("ask_user", json.dumps(args))
     assert block is not None
     assert block.tool_type == "ask_user"
@@ -92,7 +104,9 @@ def test_serializer_keeps_unicode_readable_for_tool_trace():
         "question": "¿Qué proyecto prefieres?",
         "options": [{"label": "Reseñas"}, {"label": "Clasificación"}],
     }
-    block = function_call_to_tool_block("ask_user", json.dumps(args, ensure_ascii=False))
+    block = function_call_to_tool_block(
+        "ask_user", json.dumps(args, ensure_ascii=False)
+    )
     assert "¿Qué proyecto prefieres?" in block.content
     assert "Reseñas" in block.content
     assert "\\u00" not in block.content
@@ -106,6 +120,7 @@ def test_registered_everywhere():
     assert "ask_user" in BUILTIN_TOOL_DESCRIPTIONS
     # Function schema present
     from src.tool_schemas import FUNCTION_TOOL_SCHEMAS
+
     names = {s["function"]["name"] for s in FUNCTION_TOOL_SCHEMAS}
     assert "ask_user" in names
     # Not admin/public-gated — any user can be asked

@@ -35,6 +35,7 @@ import pytest
 
 # ── OAuth state signing ──────────────────────────────────────────
 
+
 def test_oauth_state_round_trips_account_and_owner():
     from routes.email_helpers import make_oauth_state, verify_oauth_state
 
@@ -76,7 +77,9 @@ def test_oauth_state_rejects_forged_signature():
     state = make_oauth_state("acct-123", "user@example.com")
     decoded = base64.urlsafe_b64decode(state.encode()).decode()
     payload_str, _ = decoded.rsplit("|", 1)
-    forged = base64.urlsafe_b64encode((payload_str + "|" + "deadbeef" * 8).encode()).decode()
+    forged = base64.urlsafe_b64encode(
+        (payload_str + "|" + "deadbeef" * 8).encode()
+    ).decode()
 
     assert verify_oauth_state(forged) is None
 
@@ -89,6 +92,7 @@ def test_oauth_state_rejects_garbage(garbage):
 
 
 # ── _smtp_ready: OAuth accounts have no password but can still send ──
+
 
 def test_smtp_ready_true_for_oauth_account_without_password():
     from routes.email_routes import _smtp_ready
@@ -135,19 +139,27 @@ def test_smtp_ready_false_without_host():
 
 # ── XOAUTH2 SASL framing ─────────────────────────────────────────
 
+
 def test_xoauth2_raw_is_unencoded_sasl_frame():
     from routes.email_helpers import _xoauth2_raw
 
-    assert _xoauth2_raw("me@nyu.edu", "tok123") == "user=me@nyu.edu\x01auth=Bearer tok123\x01\x01"
+    assert (
+        _xoauth2_raw("me@nyu.edu", "tok123")
+        == "user=me@nyu.edu\x01auth=Bearer tok123\x01\x01"
+    )
 
 
 def test_xoauth2_bytes_is_raw_frame_encoded():
     from routes.email_helpers import _xoauth2_bytes
 
-    assert _xoauth2_bytes("me@nyu.edu", "tok123") == b"user=me@nyu.edu\x01auth=Bearer tok123\x01\x01"
+    assert (
+        _xoauth2_bytes("me@nyu.edu", "tok123")
+        == b"user=me@nyu.edu\x01auth=Bearer tok123\x01\x01"
+    )
 
 
 # ── Helpers for in-memory DB fixtures ────────────────────────────
+
 
 def _make_db():
     """Return (Session, SessionFactory) backed by an isolated in-memory SQLite DB.
@@ -158,7 +170,10 @@ def _make_db():
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
     from core.database import Base
-    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+
+    engine = create_engine(
+        "sqlite:///:memory:", connect_args={"check_same_thread": False}
+    )
     Base.metadata.create_all(engine)
     Factory = sessionmaker(bind=engine)
     return Factory(), Factory
@@ -167,6 +182,7 @@ def _make_db():
 def _make_account(session, account_id="acct-1", owner="alice", **kwargs):
     """Insert a minimal EmailAccount row and return it."""
     from core.database import EmailAccount
+
     row = EmailAccount(
         id=account_id,
         owner=owner,
@@ -189,6 +205,7 @@ def _make_account(session, account_id="acct-1", owner="alice", **kwargs):
 
 # ── Token encryption at rest ─────────────────────────────────────
 
+
 def test_refresh_token_stored_encrypted_not_raw():
     """_refresh_google_token must encrypt the new access token before writing it
     to the DB — storing the raw token string would expose credentials at rest."""
@@ -198,20 +215,31 @@ def test_refresh_token_stored_encrypted_not_raw():
     raw_token = "ya29.test_access_token_raw"
 
     db, Factory = _make_db()
-    _make_account(db, account_id="acct-r", owner="bob",
-                  oauth_refresh_token=_enc("refresh-tok-xyz"))
+    _make_account(
+        db,
+        account_id="acct-r",
+        owner="bob",
+        oauth_refresh_token=_enc("refresh-tok-xyz"),
+    )
     db.close()
 
     fake_resp = mock.MagicMock()
     fake_resp.raise_for_status = mock.MagicMock()
     fake_resp.json.return_value = {"access_token": raw_token, "expires_in": 3600}
 
-    with mock.patch("httpx.post", return_value=fake_resp), \
-         mock.patch("core.database.SessionLocal", Factory), \
-         mock.patch("routes.email_helpers.os.environ.get", side_effect=lambda k, d="": {
-             "GOOGLE_OAUTH_CLIENT_ID": "cid", "GOOGLE_OAUTH_CLIENT_SECRET": "csec"
-         }.get(k, d)):
+    with (
+        mock.patch("httpx.post", return_value=fake_resp),
+        mock.patch("core.database.SessionLocal", Factory),
+        mock.patch(
+            "routes.email_helpers.os.environ.get",
+            side_effect=lambda k, d="": {
+                "GOOGLE_OAUTH_CLIENT_ID": "cid",
+                "GOOGLE_OAUTH_CLIENT_SECRET": "csec",
+            }.get(k, d),
+        ),
+    ):
         from routes.email_helpers import _refresh_google_token
+
         result = _refresh_google_token("acct-r")
 
     verify_db = Factory()
@@ -219,7 +247,9 @@ def test_refresh_token_stored_encrypted_not_raw():
     stored = row.oauth_access_token
     verify_db.close()
 
-    assert result == raw_token, "function should return the plain access token to callers"
+    assert result == raw_token, (
+        "function should return the plain access token to callers"
+    )
     assert stored != raw_token, "raw token must not be stored directly in the DB"
     assert _dec(stored) == raw_token, "stored value must decrypt back to the raw token"
 
@@ -230,20 +260,28 @@ def test_refresh_stores_encrypted_expiry_not_token():
     from core.database import EmailAccount
 
     db, Factory = _make_db()
-    _make_account(db, account_id="acct-e", owner="bob",
-                  oauth_refresh_token=_enc("ref-tok"))
+    _make_account(
+        db, account_id="acct-e", owner="bob", oauth_refresh_token=_enc("ref-tok")
+    )
     db.close()
 
     fake_resp = mock.MagicMock()
     fake_resp.raise_for_status = mock.MagicMock()
     fake_resp.json.return_value = {"access_token": "ya29.secret", "expires_in": 3600}
 
-    with mock.patch("httpx.post", return_value=fake_resp), \
-         mock.patch("core.database.SessionLocal", Factory), \
-         mock.patch("routes.email_helpers.os.environ.get", side_effect=lambda k, d="": {
-             "GOOGLE_OAUTH_CLIENT_ID": "cid", "GOOGLE_OAUTH_CLIENT_SECRET": "csec"
-         }.get(k, d)):
+    with (
+        mock.patch("httpx.post", return_value=fake_resp),
+        mock.patch("core.database.SessionLocal", Factory),
+        mock.patch(
+            "routes.email_helpers.os.environ.get",
+            side_effect=lambda k, d="": {
+                "GOOGLE_OAUTH_CLIENT_ID": "cid",
+                "GOOGLE_OAUTH_CLIENT_SECRET": "csec",
+            }.get(k, d),
+        ),
+    ):
         from routes.email_helpers import _refresh_google_token
+
         _refresh_google_token("acct-e")
 
     verify_db = Factory()
@@ -251,8 +289,9 @@ def test_refresh_stores_encrypted_expiry_not_token():
     expiry = row.oauth_token_expiry
     verify_db.close()
 
-    assert "ya29" not in (expiry or ""), \
+    assert "ya29" not in (expiry or ""), (
         "token_expiry must be a timestamp, not the token string"
+    )
 
 
 # ── Real OAuth callback route ─────────────────────────────────────
@@ -261,18 +300,23 @@ def test_refresh_stores_encrypted_expiry_not_token():
 # invoke it — they pin the real route's behaviour, not a re-implementation, so
 # they fail if the ownership/state guards are ever removed or weakened.
 
+
 def _callback_endpoint():
     """Return the live google_oauth_callback endpoint from the email router."""
     from routes.email_routes import setup_email_routes
+
     router = setup_email_routes()
     for route in router.routes:
-        if route.path == "/api/email/oauth/google/callback" and "GET" in getattr(route, "methods", set()):
+        if route.path == "/api/email/oauth/google/callback" and "GET" in getattr(
+            route, "methods", set()
+        ):
             return route.endpoint
     raise AssertionError("google_oauth_callback route not found")
 
 
 class _FakeRequest:
     """Minimal stand-in for starlette Request — the callback only reads headers."""
+
     headers = {"host": "localhost:7000"}
 
 
@@ -301,7 +345,9 @@ async def test_callback_missing_code_returns_generic_error():
 async def test_callback_provider_error_returns_generic_error():
     """An `error` from Google → generic error redirect, no raw provider text."""
     callback = _callback_endpoint()
-    resp = await callback(code=None, state=None, error="access_denied", request=_FakeRequest())
+    resp = await callback(
+        code=None, state=None, error="access_denied", request=_FakeRequest()
+    )
 
     loc = _location(resp)
     assert "email_oauth_error=google_error" in loc
@@ -313,8 +359,12 @@ async def test_callback_tampered_state_returns_generic_error_no_leak():
     """Tampered/invalid state → invalid_state redirect; the auth code and any
     token must never appear in the redirect URL."""
     callback = _callback_endpoint()
-    resp = await callback(code="4/secret-auth-code", state="not-a-valid-state",
-                          error=None, request=_FakeRequest())
+    resp = await callback(
+        code="4/secret-auth-code",
+        state="not-a-valid-state",
+        error=None,
+        request=_FakeRequest(),
+    )
 
     loc = _location(resp)
     assert "email_oauth_error=invalid_state" in loc
@@ -339,7 +389,11 @@ async def test_callback_owner_mismatch_does_not_write_tokens():
     # rejects the write *before* trusting them.
     token_resp = mock.MagicMock()
     token_resp.raise_for_status = mock.MagicMock()
-    token_resp.json.return_value = {"access_token": "ya29.attacker", "refresh_token": "r", "expires_in": 3600}
+    token_resp.json.return_value = {
+        "access_token": "ya29.attacker",
+        "refresh_token": "r",
+        "expires_in": 3600,
+    }
     userinfo_resp = mock.MagicMock()
     userinfo_resp.is_success = True
     userinfo_resp.json.return_value = {"email": "bob@evil.com", "name": "Bob"}
@@ -347,11 +401,15 @@ async def test_callback_owner_mismatch_does_not_write_tokens():
     # State is genuinely signed, but for owner "bob" — not the row owner "alice".
     state = make_oauth_state("acct-x", "bob")
 
-    with mock.patch("httpx.post", return_value=token_resp), \
-         mock.patch("httpx.get", return_value=userinfo_resp), \
-         mock.patch("core.database.SessionLocal", Factory):
+    with (
+        mock.patch("httpx.post", return_value=token_resp),
+        mock.patch("httpx.get", return_value=userinfo_resp),
+        mock.patch("core.database.SessionLocal", Factory),
+    ):
         callback = _callback_endpoint()
-        resp = await callback(code="4/code", state=state, error=None, request=_FakeRequest())
+        resp = await callback(
+            code="4/code", state=state, error=None, request=_FakeRequest()
+        )
 
     loc = _location(resp)
     assert "email_oauth_error=ownership_error" in loc
@@ -380,34 +438,49 @@ async def test_callback_valid_owner_writes_encrypted_tokens_to_intended_account(
     raw_refresh = "1//legit_refresh_token"
     token_resp = mock.MagicMock()
     token_resp.raise_for_status = mock.MagicMock()
-    token_resp.json.return_value = {"access_token": raw_access, "refresh_token": raw_refresh, "expires_in": 3600}
+    token_resp.json.return_value = {
+        "access_token": raw_access,
+        "refresh_token": raw_refresh,
+        "expires_in": 3600,
+    }
     userinfo_resp = mock.MagicMock()
     userinfo_resp.is_success = True
     userinfo_resp.json.return_value = {"email": "alice@nyu.edu", "name": "Alice"}
 
     state = make_oauth_state("acct-v", "alice")
 
-    with mock.patch("httpx.post", return_value=token_resp), \
-         mock.patch("httpx.get", return_value=userinfo_resp), \
-         mock.patch("core.database.SessionLocal", Factory):
+    with (
+        mock.patch("httpx.post", return_value=token_resp),
+        mock.patch("httpx.get", return_value=userinfo_resp),
+        mock.patch("core.database.SessionLocal", Factory),
+    ):
         callback = _callback_endpoint()
-        resp = await callback(code="4/code", state=state, error=None, request=_FakeRequest())
+        resp = await callback(
+            code="4/code", state=state, error=None, request=_FakeRequest()
+        )
 
     assert "email_oauth_success=1" in _location(resp)
 
     verify_db = Factory()
     target = verify_db.query(EmailAccount).filter(EmailAccount.id == "acct-v").first()
-    other = verify_db.query(EmailAccount).filter(EmailAccount.id == "acct-other").first()
+    other = (
+        verify_db.query(EmailAccount).filter(EmailAccount.id == "acct-other").first()
+    )
     verify_db.close()
 
     assert target.oauth_provider == "google"
-    assert target.oauth_access_token != raw_access, "access token must be stored encrypted"
+    assert target.oauth_access_token != raw_access, (
+        "access token must be stored encrypted"
+    )
     assert _dec(target.oauth_access_token) == raw_access
     assert _dec(target.oauth_refresh_token) == raw_refresh
-    assert other.oauth_access_token is None, "tokens must only touch the intended account"
+    assert other.oauth_access_token is None, (
+        "tokens must only touch the intended account"
+    )
 
 
 # ── Token refresh scenarios ───────────────────────────────────────
+
 
 def test_get_valid_google_token_uses_cached_when_fresh():
     """_get_valid_google_token must NOT call refresh when the stored token is
@@ -442,7 +515,9 @@ def test_get_valid_google_token_refreshes_when_expired():
         "oauth_token_expiry": past_expiry,
     }
 
-    with mock.patch("routes.email_helpers._refresh_google_token", return_value="ya29.new_token") as mock_refresh:
+    with mock.patch(
+        "routes.email_helpers._refresh_google_token", return_value="ya29.new_token"
+    ) as mock_refresh:
         result = _get_valid_google_token("acct-exp", cfg)
 
     mock_refresh.assert_called_once_with("acct-exp")
@@ -455,19 +530,27 @@ def test_refresh_failure_returns_none_no_secret_raised():
     from src.secret_storage import encrypt as _enc
 
     db, Factory = _make_db()
-    _make_account(db, account_id="acct-fail", owner="dave",
-                  oauth_refresh_token=_enc("ref-tok"))
+    _make_account(
+        db, account_id="acct-fail", owner="dave", oauth_refresh_token=_enc("ref-tok")
+    )
     db.close()
 
     failing_resp = mock.MagicMock()
     failing_resp.raise_for_status.side_effect = Exception("401 Unauthorized")
 
-    with mock.patch("httpx.post", return_value=failing_resp), \
-         mock.patch("core.database.SessionLocal", Factory), \
-         mock.patch("routes.email_helpers.os.environ.get", side_effect=lambda k, d="": {
-             "GOOGLE_OAUTH_CLIENT_ID": "cid", "GOOGLE_OAUTH_CLIENT_SECRET": "csec"
-         }.get(k, d)):
+    with (
+        mock.patch("httpx.post", return_value=failing_resp),
+        mock.patch("core.database.SessionLocal", Factory),
+        mock.patch(
+            "routes.email_helpers.os.environ.get",
+            side_effect=lambda k, d="": {
+                "GOOGLE_OAUTH_CLIENT_ID": "cid",
+                "GOOGLE_OAUTH_CLIENT_SECRET": "csec",
+            }.get(k, d),
+        ),
+    ):
         from routes.email_helpers import _refresh_google_token
+
         result = _refresh_google_token("acct-fail")
 
     assert result is None, "failed refresh must return None, not raise"
@@ -478,12 +561,14 @@ def test_refresh_without_credentials_returns_none():
     credentials are not configured — no DB query, no HTTP call."""
     with mock.patch("routes.email_helpers.os.environ.get", return_value=""):
         from routes.email_helpers import _refresh_google_token
+
         result = _refresh_google_token("acct-any")
 
     assert result is None
 
 
 # ── Password-account regression ───────────────────────────────────
+
 
 def test_imap_connect_uses_login_for_password_accounts():
     """Existing password-auth IMAP accounts must still call conn.login() and
@@ -502,8 +587,12 @@ def test_imap_connect_uses_login_for_password_accounts():
         "account_id": "acct-pw",
     }
 
-    with mock.patch("routes.email_helpers._open_imap_connection", return_value=mock_conn), \
-         mock.patch("routes.email_helpers._get_email_config", return_value=cfg):
+    with (
+        mock.patch(
+            "routes.email_helpers._open_imap_connection", return_value=mock_conn
+        ),
+        mock.patch("routes.email_helpers._get_email_config", return_value=cfg),
+    ):
         _imap_connect("acct-pw", owner="alice")
 
     mock_conn.login.assert_called_once_with("me@gmail.com", "app-password-xyz")
@@ -530,8 +619,12 @@ def test_imap_connect_uses_xoauth2_for_oauth_accounts():
         "oauth_token_expiry": future_expiry,
     }
 
-    with mock.patch("routes.email_helpers._open_imap_connection", return_value=mock_conn), \
-         mock.patch("routes.email_helpers._get_email_config", return_value=cfg):
+    with (
+        mock.patch(
+            "routes.email_helpers._open_imap_connection", return_value=mock_conn
+        ),
+        mock.patch("routes.email_helpers._get_email_config", return_value=cfg),
+    ):
         _imap_connect("acct-oauth", owner="alice")
 
     mock_conn.authenticate.assert_called_once()
@@ -552,16 +645,22 @@ async def test_account_list_response_does_not_expose_token_values():
     raw_refresh = "1//super_secret_refresh_token"
 
     db, Factory = _make_db()
-    _make_account(db, account_id="acct-list", owner="alice",
-                  oauth_provider="google",
-                  oauth_access_token=_enc(raw_access),
-                  oauth_refresh_token=_enc(raw_refresh))
+    _make_account(
+        db,
+        account_id="acct-list",
+        owner="alice",
+        oauth_provider="google",
+        oauth_access_token=_enc(raw_access),
+        oauth_refresh_token=_enc(raw_refresh),
+    )
     db.close()
 
     router = setup_email_routes()
     list_accounts = None
     for route in router.routes:
-        if route.path == "/api/email/accounts" and "GET" in getattr(route, "methods", set()):
+        if route.path == "/api/email/accounts" and "GET" in getattr(
+            route, "methods", set()
+        ):
             list_accounts = route.endpoint
             break
     assert list_accounts is not None, "accounts list route not found"
@@ -572,9 +671,11 @@ async def test_account_list_response_does_not_expose_token_values():
     blob = json.dumps(result)
     assert raw_access not in blob, "raw access token must not appear in list response"
     assert raw_refresh not in blob, "raw refresh token must not appear in list response"
-    assert _enc(raw_access) not in blob, "encrypted token must not be sent to the client either"
+    assert _enc(raw_access) not in blob, (
+        "encrypted token must not be sent to the client either"
+    )
 
     acct = result["accounts"][0]
-    assert acct["oauth_provider"] == "google"   # status is exposed
-    assert "oauth_access_token" not in acct      # token value is not
+    assert acct["oauth_provider"] == "google"  # status is exposed
+    assert "oauth_access_token" not in acct  # token value is not
     assert "oauth_refresh_token" not in acct

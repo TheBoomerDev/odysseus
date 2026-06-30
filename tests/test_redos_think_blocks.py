@@ -45,13 +45,13 @@ EQUIV_CASES = [
     "a<think>one</think>b<think>two</think>c",
     "<think>only</think>",
     "<think></think>tail",
-    "<think>a<think>nested</think>rest",          # lazy stops at first closer
-    "leading</think>orphan<think>x</think>",      # orphan closer is NOT stripped
-    "trailing<think>no closer for this one",       # dangling opener kept verbatim
+    "<think>a<think>nested</think>rest",  # lazy stops at first closer
+    "leading</think>orphan<think>x</think>",  # orphan closer is NOT stripped
+    "trailing<think>no closer for this one",  # dangling opener kept verbatim
     "CASE <THINK>UP</THINK> mix <Think>x</Think>",  # case-insensitive
-    "multi\nline\n<think>a\nb\nc</think>\nkeep",   # DOTALL across newlines
+    "multi\nline\n<think>a\nb\nc</think>\nkeep",  # DOTALL across newlines
     "<thinking>not matched by narrow regex</thinking>",  # only literal <think>
-    "<think >space-in-tag not matched</think >",   # literal tag only
+    "<think >space-in-tag not matched</think >",  # literal tag only
 ]
 
 
@@ -66,6 +66,7 @@ def test_empty_and_none_safe():
 
 
 # -- ReDoS bound -------------------------------------------------------------
+
 
 def test_many_openers_no_closer_is_linear():
     # Attacker echoes thousands of "<think>" with no closer. The lazy regex

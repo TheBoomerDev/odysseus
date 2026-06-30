@@ -11,7 +11,9 @@ def test_nix_files_are_treated_as_readable_documents(tmp_path):
 
 def test_nix_file_processing_includes_content_in_code_block(tmp_path):
     nix_file = tmp_path / "configuration.nix"
-    nix_file.write_text("{ pkgs, ... }:\n{\n  services.openssh.enable = true;\n}\n", encoding="utf-8")
+    nix_file.write_text(
+        "{ pkgs, ... }:\n{\n  services.openssh.enable = true;\n}\n", encoding="utf-8"
+    )
 
     rendered = _process_text_file(str(nix_file))
 

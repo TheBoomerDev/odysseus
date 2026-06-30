@@ -32,7 +32,9 @@ def _load_mail_cli(monkeypatch):
 def test_recipient_list_trims_to_cc_and_bcc(monkeypatch):
     cli = _load_mail_cli(monkeypatch)
 
-    assert cli._recipient_list(" a@example.com, ", "b@example.com", " c@example.com ") == [
+    assert cli._recipient_list(
+        " a@example.com, ", "b@example.com", " c@example.com "
+    ) == [
         "a@example.com",
         "b@example.com",
         "c@example.com",

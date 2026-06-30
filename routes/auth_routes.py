@@ -13,7 +13,12 @@ from pathlib import Path
 
 from core.atomic_io import atomic_write_json, atomic_write_text
 from core.auth import AuthManager, RESERVED_USERNAMES, SetAdminResult, TOKEN_TTL
-from src.constants import DEEP_RESEARCH_DIR, MEMORY_FILE, PASSWORD_MIN_LENGTH, SKILLS_DIR
+from src.constants import (
+    DEEP_RESEARCH_DIR,
+    MEMORY_FILE,
+    PASSWORD_MIN_LENGTH,
+    SKILLS_DIR,
+)
 from src.rate_limiter import RateLimiter
 from src.settings_scrub import scrub_settings
 from src.settings import (
@@ -81,6 +86,7 @@ class SetAdminRequest(BaseModel):
 class SetOpenRegistrationRequest(BaseModel):
     enabled: bool
 
+
 SESSION_COOKIE = "odysseus_session"
 
 
@@ -103,7 +109,9 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
         if auth_manager.is_configured:
             raise HTTPException(400, "Already configured")
         if len(body.password) < PASSWORD_MIN_LENGTH:
-            raise HTTPException(400, f"Password must be at least {PASSWORD_MIN_LENGTH} characters")
+            raise HTTPException(
+                400, f"Password must be at least {PASSWORD_MIN_LENGTH} characters"
+            )
         if len(body.username.strip()) < 1:
             raise HTTPException(400, "Username is required")
         if body.username.lower() in RESERVED_USERNAMES:
@@ -121,14 +129,20 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
         if not auth_manager.is_configured:
             raise HTTPException(400, "Run setup first")
         if not auth_manager.signup_enabled:
-            raise HTTPException(403, "Registration is disabled. Ask an admin for an account.")
+            raise HTTPException(
+                403, "Registration is disabled. Ask an admin for an account."
+            )
         if len(body.password) < PASSWORD_MIN_LENGTH:
-            raise HTTPException(400, f"Password must be at least {PASSWORD_MIN_LENGTH} characters")
+            raise HTTPException(
+                400, f"Password must be at least {PASSWORD_MIN_LENGTH} characters"
+            )
         if len(body.username.strip()) < 1:
             raise HTTPException(400, "Username is required")
         if body.username.lower() in RESERVED_USERNAMES:
             raise HTTPException(403, "Username is reserved")
-        ok = await asyncio.to_thread(auth_manager.create_user, body.username, body.password, is_admin=False)
+        ok = await asyncio.to_thread(
+            auth_manager.create_user, body.username, body.password, is_admin=False
+        )
         if not ok:
             raise HTTPException(409, "Username already taken")
         return {"ok": True, "message": "Account created"}
@@ -139,7 +153,9 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
             raise HTTPException(429, "Too many requests — try again later")
         # Verify password first
         username = body.username.strip().lower()
-        if not await asyncio.to_thread(auth_manager.verify_password, username, body.password):
+        if not await asyncio.to_thread(
+            auth_manager.verify_password, username, body.password
+        ):
             raise HTTPException(401, "Invalid credentials")
         # Check 2FA if enabled
         if auth_manager.totp_enabled(username):
@@ -201,9 +217,13 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
         if not user:
             raise HTTPException(401, "Not authenticated")
         if len(body.new_password) < PASSWORD_MIN_LENGTH:
-            raise HTTPException(400, f"Password must be at least {PASSWORD_MIN_LENGTH} characters")
+            raise HTTPException(
+                400, f"Password must be at least {PASSWORD_MIN_LENGTH} characters"
+            )
         current_token = request.cookies.get(SESSION_COOKIE)
-        ok = await asyncio.to_thread(auth_manager.change_password, user, body.current_password, body.new_password)
+        ok = await asyncio.to_thread(
+            auth_manager.change_password, user, body.current_password, body.new_password
+        )
         if not ok:
             raise HTTPException(400, "Current password is incorrect")
         await asyncio.to_thread(auth_manager.revoke_user_sessions, user, current_token)
@@ -226,12 +246,19 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
             raise HTTPException(500, "Failed to generate secret")
         uri = auth_manager.totp_get_provisioning_uri(user, secret)
         # Generate QR code as base64 PNG
-        import qrcode, io, base64
+        import qrcode
+        import io
+        import base64
+
         qr = qrcode.make(uri, box_size=6, border=2)
         buf = io.BytesIO()
         qr.save(buf, format="PNG")
         qr_b64 = base64.b64encode(buf.getvalue()).decode("ascii")
-        return {"secret": secret, "uri": uri, "qr_code": f"data:image/png;base64,{qr_b64}"}
+        return {
+            "secret": secret,
+            "uri": uri,
+            "qr_code": f"data:image/png;base64,{qr_b64}",
+        }
 
     class TotpVerifyRequest(BaseModel):
         code: str
@@ -282,7 +309,9 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
         if not user or not auth_manager.is_admin(user):
             raise HTTPException(403, "Admin only")
         if len(body.password) < PASSWORD_MIN_LENGTH:
-            raise HTTPException(400, f"Password must be at least {PASSWORD_MIN_LENGTH} characters")
+            raise HTTPException(
+                400, f"Password must be at least {PASSWORD_MIN_LENGTH} characters"
+            )
         if len(body.username.strip()) < 1:
             raise HTTPException(400, "Username is required")
         if body.username.lower() in RESERVED_USERNAMES:
@@ -313,7 +342,11 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
         if not new_username:
             raise HTTPException(400, "Username required")
         if old_username == new_username:
-            return {"ok": True, "username": new_username, "renamed_self": old_username == user}
+            return {
+                "ok": True,
+                "username": new_username,
+                "renamed_self": old_username == user,
+            }
         if old_username not in auth_manager.users:
             raise HTTPException(404, "User not found")
         if new_username in auth_manager.users:
@@ -332,11 +365,15 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
             # username, so the rollback must authenticate as the new user.
             rollback_user = new_username if user == old_username else user
             try:
-                return bool(auth_manager.rename_user(new_username, old_username, rollback_user))
+                return bool(
+                    auth_manager.rename_user(new_username, old_username, rollback_user)
+                )
             except Exception as rollback_err:
                 logger.error(
                     "Failed to roll back auth rename %s -> %s after owner migration failure: %s",
-                    new_username, old_username, rollback_err,
+                    new_username,
+                    old_username,
+                    rollback_err,
                 )
                 return False
 
@@ -346,6 +383,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
         try:
             from sqlalchemy import func
             from core.database import Base, SessionLocal
+
             db = SessionLocal()
             try:
                 for mapper in Base.registry.mappers:
@@ -364,17 +402,24 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
             finally:
                 db.close()
         except Exception as e:
-            logger.error("Failed to rename owner references %s -> %s: %s", old_username, new_username, e)
+            logger.error(
+                "Failed to rename owner references %s -> %s: %s",
+                old_username,
+                new_username,
+                e,
+            )
             if not _rollback_auth_rename():
                 logger.error(
                     "Auth rename %s -> %s could not be rolled back after owner migration failure",
-                    old_username, new_username,
+                    old_username,
+                    new_username,
                 )
             raise HTTPException(500, "Failed to rename user data")
 
         # Per-user prefs are JSON-backed, not SQL-backed.
         try:
             from routes.prefs_routes import _load as _load_prefs, _save as _save_prefs
+
             prefs = _load_prefs()
             users = prefs.get("_users") if isinstance(prefs, dict) else None
             if isinstance(users, dict):
@@ -387,7 +432,12 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
                     users[new_username] = users.pop(prefs_key)
                     _save_prefs(prefs)
         except Exception as e:
-            logger.warning("Failed to rename user prefs %s -> %s: %s", old_username, new_username, e)
+            logger.warning(
+                "Failed to rename user prefs %s -> %s: %s",
+                old_username,
+                new_username,
+                e,
+            )
 
         # In-flight deep-research tasks live in the process-local
         # ResearchHandler registry. They are not covered by the persisted JSON
@@ -401,7 +451,12 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
             if callable(rename_owner):
                 rename_owner(old_username, new_username)
         except Exception as e:
-            logger.warning("Failed to rename active research tasks %s -> %s: %s", old_username, new_username, e)
+            logger.warning(
+                "Failed to rename active research tasks %s -> %s: %s",
+                old_username,
+                new_username,
+                e,
+            )
 
         # deep_research: each completed report is a standalone JSON file with
         # an `owner` field. research_routes filters by d.get("owner") == user,
@@ -416,9 +471,16 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
                             d["owner"] = new_username
                             atomic_write_json(str(p), d)
                     except Exception as err:
-                        logger.warning("Failed to update research owner in %s: %s", p.name, err)
+                        logger.warning(
+                            "Failed to update research owner in %s: %s", p.name, err
+                        )
         except Exception as e:
-            logger.warning("Failed to rename research owner references %s -> %s: %s", old_username, new_username, e)
+            logger.warning(
+                "Failed to rename research owner references %s -> %s: %s",
+                old_username,
+                new_username,
+                e,
+            )
 
         # memory.json: a flat JSON array where each entry carries an `owner`
         # field. memory_manager.load(owner=user) filters on it, so stale
@@ -430,13 +492,22 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
                 if isinstance(entries, list):
                     changed = False
                     for entry in entries:
-                        if isinstance(entry, dict) and str(entry.get("owner", "")).strip().lower() == old_username:
+                        if (
+                            isinstance(entry, dict)
+                            and str(entry.get("owner", "")).strip().lower()
+                            == old_username
+                        ):
                             entry["owner"] = new_username
                             changed = True
                     if changed:
                         atomic_write_json(MEMORY_FILE, entries)
         except Exception as e:
-            logger.warning("Failed to rename memory.json owner references %s -> %s: %s", old_username, new_username, e)
+            logger.warning(
+                "Failed to rename memory.json owner references %s -> %s: %s",
+                old_username,
+                new_username,
+                e,
+            )
 
         # uploads.json: upload rows use owner metadata for access checks and
         # owner-prefixed index keys for dedupe. Rename both so attachments keep
@@ -447,14 +518,22 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
             if callable(rename_owner):
                 rename_owner(old_username, new_username)
         except Exception as e:
-            logger.warning("Failed to rename upload owner references %s -> %s: %s", old_username, new_username, e)
+            logger.warning(
+                "Failed to rename upload owner references %s -> %s: %s",
+                old_username,
+                new_username,
+                e,
+            )
 
         # direct personal RAG uploads live in per-owner directories and the
         # vector metadata also carries the username used for owner-filtered
         # search. Keep both in sync with the auth rename.
         try:
             from routes.personal_routes import rename_personal_upload_owner
-            personal_docs_manager = getattr(request.app.state, "personal_docs_manager", None)
+
+            personal_docs_manager = getattr(
+                request.app.state, "personal_docs_manager", None
+            )
             if personal_docs_manager is not None:
                 rag_manager = getattr(personal_docs_manager, "rag_manager", None)
                 rename_personal_upload_owner(
@@ -464,7 +543,12 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
                     rag_manager=rag_manager,
                 )
         except Exception as e:
-            logger.warning("Failed to rename personal RAG upload owner references %s -> %s: %s", old_username, new_username, e)
+            logger.warning(
+                "Failed to rename personal RAG upload owner references %s -> %s: %s",
+                old_username,
+                new_username,
+                e,
+            )
 
         # skills: SKILL.md frontmatter carries owner: <username>; the usage
         # sidecar (_usage.json) keys entries as owner::skill-name. Both must
@@ -473,13 +557,13 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
             skills_root = Path(SKILLS_DIR)
             if skills_root.is_dir():
                 _owner_re = re.compile(
-                    r'(?m)^(owner:\s*)' + re.escape(old_username) + r'\s*$',
+                    r"(?m)^(owner:\s*)" + re.escape(old_username) + r"\s*$",
                     re.IGNORECASE,
                 )
                 for p in skills_root.rglob("SKILL.md"):
                     try:
                         text = p.read_text(encoding="utf-8")
-                        new_text = _owner_re.sub(r'\g<1>' + new_username, text)
+                        new_text = _owner_re.sub(r"\g<1>" + new_username, text)
                         if new_text != text:
                             atomic_write_text(str(p), new_text)
                     except Exception as err:
@@ -501,9 +585,19 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
                             if changed:
                                 atomic_write_json(str(usage_path), new_usage)
                     except Exception as err:
-                        logger.warning("Failed to update skills usage keys %s -> %s: %s", old_username, new_username, err)
+                        logger.warning(
+                            "Failed to update skills usage keys %s -> %s: %s",
+                            old_username,
+                            new_username,
+                            err,
+                        )
         except Exception as e:
-            logger.warning("Failed to rename skills owner references %s -> %s: %s", old_username, new_username, e)
+            logger.warning(
+                "Failed to rename skills owner references %s -> %s: %s",
+                old_username,
+                new_username,
+                e,
+            )
 
         # The in-memory session cache (session_manager.sessions) stores each
         # session's owner at load time. Without this patch the renamed user's
@@ -513,7 +607,10 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
         sm = getattr(request.app.state, "session_manager", None)
         if sm is not None:
             for sess in list(getattr(sm, "sessions", {}).values()):
-                if str(getattr(sess, "owner", None) or "").strip().lower() == old_username:
+                if (
+                    str(getattr(sess, "owner", None) or "").strip().lower()
+                    == old_username
+                ):
                     sess.owner = new_username
 
         # The owner-rename loop above updated ApiToken.owner in the DB, but the
@@ -524,7 +621,11 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
         invalidator = getattr(request.app.state, "invalidate_token_cache", None)
         if callable(invalidator):
             invalidator()
-        return {"ok": True, "username": new_username, "renamed_self": old_username == user}
+        return {
+            "ok": True,
+            "username": new_username,
+            "renamed_self": old_username == user,
+        }
 
     @router.put("/users/{username}/admin")
     async def set_user_admin(username: str, body: SetAdminRequest, request: Request):
@@ -574,7 +675,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
         if not user or not auth_manager.is_admin(user):
             raise HTTPException(403, "Admin only")
         auth_manager.signup_enabled = body.enabled
-        return {"ok": True,"signup_enabled": auth_manager.signup_enabled}
+        return {"ok": True, "signup_enabled": auth_manager.signup_enabled}
 
     @router.delete("/users")
     async def admin_delete_user(body: DeleteUserRequest, request: Request):
@@ -690,7 +791,12 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
     @router.get("/integrations/presets")
     async def list_presets():
         """List available integration presets."""
-        return {"presets": {k: {kk: vv for kk, vv in v.items() if kk != "api_key"} for k, v in INTEGRATION_PRESETS.items()}}
+        return {
+            "presets": {
+                k: {kk: vv for kk, vv in v.items() if kk != "api_key"}
+                for k, v in INTEGRATION_PRESETS.items()
+            }
+        }
 
     @router.post("/integrations")
     async def create_integration(request: Request):
@@ -746,6 +852,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
         if preset == "ntfy":
             import httpx
             from urllib.parse import urlparse
+
             # Strip any path/query the user accidentally pasted in the
             # base URL (e.g. `http://host:8091/odysseus`) — otherwise
             # the topic gets appended after the path and we publish to
@@ -753,9 +860,15 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
             # only ever serves from the root.
             raw_base = (integ.get("base_url") or "").strip()
             parsed = urlparse(raw_base)
-            base = f"{parsed.scheme}://{parsed.netloc}" if parsed.scheme and parsed.netloc else raw_base.rstrip("/")
+            base = (
+                f"{parsed.scheme}://{parsed.netloc}"
+                if parsed.scheme and parsed.netloc
+                else raw_base.rstrip("/")
+            )
             settings = _load_settings()
-            topic = (settings.get("reminder_ntfy_topic") or "reminders").strip() or "reminders"
+            topic = (
+                settings.get("reminder_ntfy_topic") or "reminders"
+            ).strip() or "reminders"
             full_url = f"{base}/{topic}"
             api_key = integ.get("api_key", "")
             auth_type = (integ.get("auth_type") or "none").lower()
@@ -786,35 +899,53 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
                         "ok": True,
                         "message": (
                             f"Sent to {full_url} — on your ntfy app, "
-                            f"subscribe to topic \"{topic}\" with server "
-                            f"\"{base}\" (or paste the full URL: {full_url})."
+                            f'subscribe to topic "{topic}" with server '
+                            f'"{base}" (or paste the full URL: {full_url}).'
                         ),
                     }
-                return {"ok": False, "message": f"ntfy returned HTTP {r.status_code} from {full_url}: {r.text[:200]}"}
+                return {
+                    "ok": False,
+                    "message": f"ntfy returned HTTP {r.status_code} from {full_url}: {r.text[:200]}",
+                }
             except Exception as e:
                 hint = ""
                 if parsed.hostname not in ("127.0.0.1", "localhost"):
                     hint = " If this is Docker Compose ntfy, set NTFY_BIND to that host/Tailscale IP and NTFY_BASE_URL to the same server URL in .env, then recreate ntfy."
-                return {"ok": False, "message": f"ntfy publish to {full_url} failed: {e}.{hint}"[:500]}
+                return {
+                    "ok": False,
+                    "message": f"ntfy publish to {full_url} failed: {e}.{hint}"[:500],
+                }
 
         if preset == "discord_webhook":
             import httpx
+
             webhook_url = (integ.get("base_url") or "").strip()
             if not webhook_url:
-                return {"ok": False, "message": "No webhook URL set — paste the full Discord webhook URL into the Base URL field."}
+                return {
+                    "ok": False,
+                    "message": "No webhook URL set — paste the full Discord webhook URL into the Base URL field.",
+                }
             payload = {
-                "embeds": [{
-                    "title": "Odysseus connectivity test",
-                    "description": "If you see this, your Discord Webhook integration is wired up correctly.",
-                    "color": 5793266,
-                }]
+                "embeds": [
+                    {
+                        "title": "Odysseus connectivity test",
+                        "description": "If you see this, your Discord Webhook integration is wired up correctly.",
+                        "color": 5793266,
+                    }
+                ]
             }
             try:
                 async with httpx.AsyncClient(timeout=8.0) as client:
                     r = await client.post(webhook_url, json=payload)
                 if r.is_success:
-                    return {"ok": True, "message": "Test embed sent — check your Discord channel to confirm it arrived."}
-                return {"ok": False, "message": f"Discord returned HTTP {r.status_code}: {r.text[:200]}"}
+                    return {
+                        "ok": True,
+                        "message": "Test embed sent — check your Discord channel to confirm it arrived.",
+                    }
+                return {
+                    "ok": False,
+                    "message": f"Discord returned HTTP {r.status_code}: {r.text[:200]}",
+                }
             except Exception as e:
                 return {"ok": False, "message": f"Request failed: {e}"[:400]}
 
@@ -831,6 +962,9 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
         result = await execute_api_call(integration_id, "GET", path)
         if result.get("exit_code", 1) == 0:
             return {"ok": True, "message": "Connection successful"}
-        return {"ok": False, "message": (result.get("error") or "Connection failed")[:300]}
+        return {
+            "ok": False,
+            "message": (result.get("error") or "Connection failed")[:300],
+        }
 
     return router

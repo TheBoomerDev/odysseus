@@ -14,10 +14,8 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import time
-from dataclasses import dataclass, field, asdict
-from datetime import datetime
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
@@ -30,42 +28,49 @@ GOALS_DIR = "data/cortex/goals"
 # 8-State Machine
 # ---------------------------------------------------------------------------
 
+
 class GoalStatus(str, Enum):
     """The 8 states a goal passes through during its lifecycle."""
-    CREATED     = "created"       # Initial state — goal just created
-    ANALYZING   = "analyzing"     # Analyzing requirements and scope
-    PLANNING    = "planning"      # Creating implementation plan
-    DECOMPOSING = "decomposing"   # Breaking into subtasks
-    ASSIGNING   = "assigning"     # Assigning subtasks to agents
-    EXECUTING   = "executing"     # Executing subtasks
-    VERIFYING   = "verifying"     # Verifying results against criteria
-    COMPLETED   = "completed"     # Goal completed successfully
-    FAILED      = "failed"        # Goal failed (non-retryable)
+
+    CREATED = "created"  # Initial state — goal just created
+    ANALYZING = "analyzing"  # Analyzing requirements and scope
+    PLANNING = "planning"  # Creating implementation plan
+    DECOMPOSING = "decomposing"  # Breaking into subtasks
+    ASSIGNING = "assigning"  # Assigning subtasks to agents
+    EXECUTING = "executing"  # Executing subtasks
+    VERIFYING = "verifying"  # Verifying results against criteria
+    COMPLETED = "completed"  # Goal completed successfully
+    FAILED = "failed"  # Goal failed (non-retryable)
+
 
 # Legal transitions: state -> set of allowed next states
 _TRANSITIONS: Dict[GoalStatus, Set[GoalStatus]] = {
-    GoalStatus.CREATED:     {GoalStatus.ANALYZING, GoalStatus.FAILED},
-    GoalStatus.ANALYZING:   {GoalStatus.PLANNING, GoalStatus.FAILED},
-    GoalStatus.PLANNING:    {GoalStatus.DECOMPOSING, GoalStatus.FAILED},
+    GoalStatus.CREATED: {GoalStatus.ANALYZING, GoalStatus.FAILED},
+    GoalStatus.ANALYZING: {GoalStatus.PLANNING, GoalStatus.FAILED},
+    GoalStatus.PLANNING: {GoalStatus.DECOMPOSING, GoalStatus.FAILED},
     GoalStatus.DECOMPOSING: {GoalStatus.ASSIGNING, GoalStatus.FAILED},
-    GoalStatus.ASSIGNING:   {GoalStatus.EXECUTING, GoalStatus.FAILED},
-    GoalStatus.EXECUTING:   {GoalStatus.VERIFYING, GoalStatus.FAILED},
-    GoalStatus.VERIFYING:   {GoalStatus.COMPLETED, GoalStatus.EXECUTING, GoalStatus.FAILED},
-    GoalStatus.COMPLETED:   set(),  # Terminal
-    GoalStatus.FAILED:      {GoalStatus.CREATED},  # Can retry from scratch
+    GoalStatus.ASSIGNING: {GoalStatus.EXECUTING, GoalStatus.FAILED},
+    GoalStatus.EXECUTING: {GoalStatus.VERIFYING, GoalStatus.FAILED},
+    GoalStatus.VERIFYING: {
+        GoalStatus.COMPLETED,
+        GoalStatus.EXECUTING,
+        GoalStatus.FAILED,
+    },
+    GoalStatus.COMPLETED: set(),  # Terminal
+    GoalStatus.FAILED: {GoalStatus.CREATED},  # Can retry from scratch
 }
 
 # Progress weights per state (for % calculation)
 _STATE_WEIGHTS = {
-    GoalStatus.CREATED:     0.0,
-    GoalStatus.ANALYZING:   0.1,
-    GoalStatus.PLANNING:    0.2,
+    GoalStatus.CREATED: 0.0,
+    GoalStatus.ANALYZING: 0.1,
+    GoalStatus.PLANNING: 0.2,
     GoalStatus.DECOMPOSING: 0.3,
-    GoalStatus.ASSIGNING:   0.4,
-    GoalStatus.EXECUTING:   0.7,
-    GoalStatus.VERIFYING:   0.9,
-    GoalStatus.COMPLETED:   1.0,
-    GoalStatus.FAILED:      0.0,
+    GoalStatus.ASSIGNING: 0.4,
+    GoalStatus.EXECUTING: 0.7,
+    GoalStatus.VERIFYING: 0.9,
+    GoalStatus.COMPLETED: 1.0,
+    GoalStatus.FAILED: 0.0,
 }
 
 
@@ -83,9 +88,11 @@ def validate_transition(from_state: GoalStatus, to_state: GoalStatus) -> None:
 # Checkpoint
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Checkpoint:
     """A snapshot of goal state at a point in time."""
+
     id: str
     timestamp: float
     state: GoalStatus
@@ -98,9 +105,11 @@ class Checkpoint:
 # GoalSession — persisted goal with full lifecycle
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class GoalSession:
     """A tracked goal with full state machine lifecycle."""
+
     goal_id: str
     goal: str
     status: GoalStatus = GoalStatus.CREATED
@@ -130,6 +139,7 @@ class GoalSession:
 # GoalTracker — manages state machine, checkpoints, persistence
 # ---------------------------------------------------------------------------
 
+
 class GoalTracker:
     """Manages goal sessions through their 8-state lifecycle.
 
@@ -147,7 +157,9 @@ class GoalTracker:
     # CRUD
     # ------------------------------------------------------------------
 
-    def create_goal(self, goal_id: str, goal: str, context: Optional[Dict[str, Any]] = None) -> GoalSession:
+    def create_goal(
+        self, goal_id: str, goal: str, context: Optional[Dict[str, Any]] = None
+    ) -> GoalSession:
         """Create a new goal in CREATED state."""
         if goal_id in self._sessions:
             raise ValueError(f"Goal '{goal_id}' already exists")
@@ -188,7 +200,9 @@ class GoalTracker:
     # State machine
     # ------------------------------------------------------------------
 
-    def transition(self, goal_id: str, to_status: GoalStatus, error: Optional[str] = None) -> GoalSession:
+    def transition(
+        self, goal_id: str, to_status: GoalStatus, error: Optional[str] = None
+    ) -> GoalSession:
         """Transition a goal to a new state. Validates legality."""
         session = self._get_or_raise(goal_id)
         validate_transition(session.status, to_status)
@@ -217,13 +231,18 @@ class GoalTracker:
             raise ValueError(f"Unknown state: {session.status}")
 
         if idx >= len(order) - 1:
-            raise ValueError(f"Goal '{goal_id}' is already in terminal state '{session.status.value}'")
+            raise ValueError(
+                f"Goal '{goal_id}' is already in terminal state '{session.status.value}'"
+            )
 
         next_state = order[idx + 1]
         # Skip over terminal states if trying to advance from penultimate
-        if next_state in (GoalStatus.COMPLETED, GoalStatus.FAILED) and session.status != GoalStatus.VERIFYING:
+        if (
+            next_state in (GoalStatus.COMPLETED, GoalStatus.FAILED)
+            and session.status != GoalStatus.VERIFYING
+        ):
             # If we're not at verifying, advance to next logical state
-            for s in order[idx + 1:]:
+            for s in order[idx + 1 :]:
                 if s not in (GoalStatus.COMPLETED, GoalStatus.FAILED):
                     next_state = s
                     break
@@ -241,15 +260,22 @@ class GoalTracker:
         """Retry a failed goal from scratch (CREATED state)."""
         session = self._get_or_raise(goal_id)
         if session.status != GoalStatus.FAILED:
-            raise ValueError(f"Can only retry FAILED goals, got '{session.status.value}'")
+            raise ValueError(
+                f"Can only retry FAILED goals, got '{session.status.value}'"
+            )
         return self.transition(goal_id, GoalStatus.CREATED)
 
     # ------------------------------------------------------------------
     # Progress & tracking
     # ------------------------------------------------------------------
 
-    def update_progress(self, goal_id: str, progress: float, task_count: Optional[int] = None,
-                        tasks_completed: Optional[int] = None) -> GoalSession:
+    def update_progress(
+        self,
+        goal_id: str,
+        progress: float,
+        task_count: Optional[int] = None,
+        tasks_completed: Optional[int] = None,
+    ) -> GoalSession:
         """Update progress percentage and optionally task counts."""
         session = self._get_or_raise(goal_id)
         session.progress = max(0.0, min(1.0, progress))
@@ -273,8 +299,12 @@ class GoalTracker:
     # Checkpoints
     # ------------------------------------------------------------------
 
-    def checkpoint(self, goal_id: str, context: Optional[Dict[str, Any]] = None,
-                   outputs: Optional[Dict[str, str]] = None) -> Checkpoint:
+    def checkpoint(
+        self,
+        goal_id: str,
+        context: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, str]] = None,
+    ) -> Checkpoint:
         """Create a manual checkpoint for a goal."""
         session = self._get_or_raise(goal_id)
         return self._checkpoint(session, context=context, outputs=outputs)
@@ -288,7 +318,9 @@ class GoalTracker:
         session = self._get_or_raise(goal_id)
         cp = next((c for c in session.checkpoints if c.id == checkpoint_id), None)
         if not cp:
-            raise ValueError(f"Checkpoint '{checkpoint_id}' not found for goal '{goal_id}'")
+            raise ValueError(
+                f"Checkpoint '{checkpoint_id}' not found for goal '{goal_id}'"
+            )
 
         # Restore state and progress from checkpoint
         session.status = cp.state
@@ -297,7 +329,12 @@ class GoalTracker:
         session.error = None
         session.updated_at = time.time()
         self._save(session)
-        logger.info("Goal %s restored to checkpoint %s (%s)", goal_id, checkpoint_id, cp.state.value)
+        logger.info(
+            "Goal %s restored to checkpoint %s (%s)",
+            goal_id,
+            checkpoint_id,
+            cp.state.value,
+        )
         return session
 
     # ------------------------------------------------------------------
@@ -310,8 +347,12 @@ class GoalTracker:
             raise ValueError(f"Goal '{goal_id}' not found")
         return session
 
-    def _checkpoint(self, session: GoalSession, context: Optional[Dict[str, Any]] = None,
-                    outputs: Optional[Dict[str, str]] = None) -> Checkpoint:
+    def _checkpoint(
+        self,
+        session: GoalSession,
+        context: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, str]] = None,
+    ) -> Checkpoint:
         """Create a checkpoint from the current session state."""
         cp = Checkpoint(
             id=f"cp-{int(time.time() * 1000)}-{len(session.checkpoints)}",
@@ -331,41 +372,46 @@ class GoalTracker:
     def _save(self, session: GoalSession) -> None:
         """Persist a goal session to disk."""
         path = self._goal_path(session.goal_id)
+        data = {
+            "goal_id": session.goal_id,
+            "goal": session.goal,
+            "status": session.status.value,
+            "created_at": session.created_at,
+            "updated_at": session.updated_at,
+            "progress": session.progress,
+            "error": session.error,
+            "context": session.context,
+            "task_count": session.task_count,
+            "tasks_completed": session.tasks_completed,
+            "checkpoints": [
+                {
+                    "id": c.id,
+                    "timestamp": c.timestamp,
+                    "state": c.state.value,
+                    "progress": c.progress,
+                    "context": c.context,
+                    "outputs": c.outputs,
+                }
+                for c in session.checkpoints
+            ],
+        }
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
-            data = {
-                "goal_id": session.goal_id,
-                "goal": session.goal,
-                "status": session.status.value,
-                "created_at": session.created_at,
-                "updated_at": session.updated_at,
-                "progress": session.progress,
-                "error": session.error,
-                "context": session.context,
-                "task_count": session.task_count,
-                "tasks_completed": session.tasks_completed,
-                "checkpoints": [
-                    {
-                        "id": c.id,
-                        "timestamp": c.timestamp,
-                        "state": c.state.value,
-                        "progress": c.progress,
-                        "context": c.context,
-                        "outputs": c.outputs,
-                    }
-                    for c in session.checkpoints
-                ],
-            }
             with open(path, "w") as f:
                 json.dump(data, f, indent=2, default=str)
         except PermissionError:
             # Fallback to temp
             import tempfile
-            fallback = Path(tempfile.gettempdir()) / "cortex-goals" / f"{session.goal_id}.json"
+
+            fallback = (
+                Path(tempfile.gettempdir()) / "cortex-goals" / f"{session.goal_id}.json"
+            )
             fallback.parent.mkdir(parents=True, exist_ok=True)
             with open(fallback, "w") as f:
                 json.dump(data, f, indent=2, default=str)
-            logger.warning("Saved goal %s to fallback path %s", session.goal_id, fallback)
+            logger.warning(
+                "Saved goal %s to fallback path %s", session.goal_id, fallback
+            )
 
     def _load_all(self) -> None:
         """Load all persisted goal sessions."""
@@ -377,14 +423,16 @@ class GoalTracker:
                     data = json.load(f)
                 checkpoints = []
                 for c in data.get("checkpoints", []):
-                    checkpoints.append(Checkpoint(
-                        id=c["id"],
-                        timestamp=c["timestamp"],
-                        state=GoalStatus(c["state"]),
-                        progress=c["progress"],
-                        context=c.get("context", {}),
-                        outputs=c.get("outputs", {}),
-                    ))
+                    checkpoints.append(
+                        Checkpoint(
+                            id=c["id"],
+                            timestamp=c["timestamp"],
+                            state=GoalStatus(c["state"]),
+                            progress=c["progress"],
+                            context=c.get("context", {}),
+                            outputs=c.get("outputs", {}),
+                        )
+                    )
                 session = GoalSession(
                     goal_id=data["goal_id"],
                     goal=data["goal"],
@@ -401,4 +449,6 @@ class GoalTracker:
                 self._sessions[session.goal_id] = session
             except Exception as e:
                 logger.warning("Failed to load goal from %s: %s", path, e)
-        logger.info("Loaded %d goal sessions from %s", len(self._sessions), self._base_dir)
+        logger.info(
+            "Loaded %d goal sessions from %s", len(self._sessions), self._base_dir
+        )

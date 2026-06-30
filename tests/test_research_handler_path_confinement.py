@@ -21,9 +21,13 @@ def test_research_json_path_allows_safe_ids(tmp_path, monkeypatch):
     assert path == (data_dir / "rp-abc123.json").resolve()
 
 
-@pytest.mark.parametrize("session_id", ["../escape", "..", "rp/test", "rp_test", "", None])
+@pytest.mark.parametrize(
+    "session_id", ["../escape", "..", "rp/test", "rp_test", "", None]
+)
 def test_research_json_path_rejects_invalid_ids(tmp_path, monkeypatch, session_id):
-    monkeypatch.setattr(research_handler, "RESEARCH_DATA_DIR", tmp_path / "deep_research")
+    monkeypatch.setattr(
+        research_handler, "RESEARCH_DATA_DIR", tmp_path / "deep_research"
+    )
 
     assert research_handler._research_json_path(session_id) is None
 
@@ -48,7 +52,9 @@ def test_research_json_path_rejects_symlink_escape(tmp_path, monkeypatch):
 def test_handler_disk_read_methods_reject_invalid_ids(tmp_path, monkeypatch):
     outside = tmp_path / "escape.json"
     outside.write_text(json.dumps({"result": "secret"}), encoding="utf-8")
-    monkeypatch.setattr(research_handler, "RESEARCH_DATA_DIR", tmp_path / "deep_research")
+    monkeypatch.setattr(
+        research_handler, "RESEARCH_DATA_DIR", tmp_path / "deep_research"
+    )
     handler = _handler()
 
     assert handler.get_status("../escape") is None
@@ -59,16 +65,24 @@ def test_handler_disk_read_methods_reject_invalid_ids(tmp_path, monkeypatch):
     assert handler.get_report_html("../escape") is None
 
 
-def test_handler_mutations_reject_invalid_ids_without_touching_outside_files(tmp_path, monkeypatch):
+def test_handler_mutations_reject_invalid_ids_without_touching_outside_files(
+    tmp_path, monkeypatch
+):
     outside = tmp_path / "escape.json"
-    outside.write_text(json.dumps({"result": "secret", "hidden_images": ["x"]}), encoding="utf-8")
-    monkeypatch.setattr(research_handler, "RESEARCH_DATA_DIR", tmp_path / "deep_research")
+    outside.write_text(
+        json.dumps({"result": "secret", "hidden_images": ["x"]}), encoding="utf-8"
+    )
+    monkeypatch.setattr(
+        research_handler, "RESEARCH_DATA_DIR", tmp_path / "deep_research"
+    )
     handler = _handler()
 
     assert handler.hide_image("../escape", "https://example.com/image.png") is False
     assert handler.unhide_all_images("../escape") is False
     handler.clear_result("../escape")
-    handler._save_result("../escape", {"query": "q", "status": "done", "result": "r", "started_at": 1})
+    handler._save_result(
+        "../escape", {"query": "q", "status": "done", "result": "r", "started_at": 1}
+    )
 
     assert json.loads(outside.read_text(encoding="utf-8")) == {
         "result": "secret",

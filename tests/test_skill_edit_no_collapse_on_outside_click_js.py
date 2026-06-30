@@ -14,6 +14,7 @@ dropped. Both the user-skill card (`_expandSkillCard`) and the built-in
 capability card (`_expandBuiltinCard`) share the same bug and the same
 guard, so both are covered here.
 """
+
 import re
 from pathlib import Path
 
@@ -49,7 +50,7 @@ def test_builtin_card_does_not_collapse_while_editing():
     # The built-in capability card has a single handler ending in
     # _expandBuiltinCard; take the click handler that immediately precedes it.
     before = text[: text.index("_expandBuiltinCard(card, b.name)")]
-    body = before[before.rindex("card.addEventListener('click'"):]
+    body = before[before.rindex("card.addEventListener('click'") :]
     assert GUARD.search(body), (
         "built-in capability card click handler must skip collapse while a "
         ".skill-md-editor is present (issue #4002)"

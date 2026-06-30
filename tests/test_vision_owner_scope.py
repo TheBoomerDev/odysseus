@@ -12,7 +12,11 @@ def test_configured_vision_model_resolution_passes_owner(monkeypatch):
 
     def fake_resolve_model(spec, owner=None):
         seen.append((spec, owner))
-        return ("http://example.test/chat/completions", spec, {"Authorization": "Bearer token"})
+        return (
+            "http://example.test/chat/completions",
+            spec,
+            {"Authorization": "Bearer token"},
+        )
 
     monkeypatch.setattr(ai_interaction, "_resolve_model", fake_resolve_model)
 
@@ -49,7 +53,11 @@ def test_vision_analysis_uses_owner_scoped_primary_and_fallback(monkeypatch, tmp
 
     def fake_resolve_vl_model(configured, owner=None):
         seen["primary"] = (configured, owner)
-        return ("http://primary.test/chat/completions", "vision-primary", {"X-Test": "1"})
+        return (
+            "http://primary.test/chat/completions",
+            "vision-primary",
+            {"X-Test": "1"},
+        )
 
     def fake_fallbacks(owner=None):
         seen["fallback_owner"] = owner
@@ -59,13 +67,19 @@ def test_vision_analysis_uses_owner_scoped_primary_and_fallback(monkeypatch, tmp
         seen["llm"] = (url, model, headers, timeout, messages)
         return "description"
 
-    monkeypatch.setattr(dp, "_load_vl_settings", lambda: {"vision_enabled": True, "vision_model": "gpt-4o"})
+    monkeypatch.setattr(
+        dp,
+        "_load_vl_settings",
+        lambda: {"vision_enabled": True, "vision_model": "gpt-4o"},
+    )
     monkeypatch.setattr(dp, "_resolve_vl_model", fake_resolve_vl_model)
     monkeypatch.setattr(dp, "llm_call", fake_llm_call)
 
     from src import endpoint_resolver
 
-    monkeypatch.setattr(endpoint_resolver, "resolve_vision_fallback_candidates", fake_fallbacks)
+    monkeypatch.setattr(
+        endpoint_resolver, "resolve_vision_fallback_candidates", fake_fallbacks
+    )
 
     image = tmp_path / "image.png"
     image.write_bytes(b"not-a-real-png-but-base64-is-enough")

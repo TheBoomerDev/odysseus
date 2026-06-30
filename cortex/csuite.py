@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Role definitions
 # ---------------------------------------------------------------------------
+
 
 class CSuiteRole(str, Enum):
     CEO = "ceo"
@@ -146,6 +147,7 @@ ROLE_INFO = {
 # Company context
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CompanyContext:
     name: str = "Technology Company"
@@ -164,6 +166,7 @@ class CompanyContext:
 # C-Suite Orchestrator
 # ---------------------------------------------------------------------------
 
+
 class CSuiteOrchestrator:
     """Orchestrates C-Suite executive agents.
 
@@ -173,9 +176,7 @@ class CSuiteOrchestrator:
 
     def __init__(self, context: Optional[CompanyContext] = None):
         self.context = context or CompanyContext()
-        self._history: Dict[CSuiteRole, List[Dict]] = {
-            role: [] for role in CSuiteRole
-        }
+        self._history: Dict[CSuiteRole, List[Dict]] = {role: [] for role in CSuiteRole}
 
     def update_context(self, context: CompanyContext) -> None:
         """Update the shared company context."""
@@ -244,25 +245,25 @@ class CSuiteOrchestrator:
         response: str,
     ) -> None:
         """Record a C-Suite response for history/context."""
-        self._history[role].append({
-            "question": question,
-            "response": response,
-            "timestamp": __import__("datetime").datetime.now().isoformat(),
-        })
+        self._history[role].append(
+            {
+                "question": question,
+                "response": response,
+                "timestamp": __import__("datetime").datetime.now().isoformat(),
+            }
+        )
 
     def get_history(self, role: Optional[CSuiteRole] = None) -> Dict:
         """Get C-Suite interaction history."""
         if role:
             return {role.value: self._history.get(role, [])}
-        return {
-            r.value: h for r, h in self._history.items()
-        }
+        return {r.value: h for r, h in self._history.items()}
 
     def _render_context(self) -> str:
         """Render company context as text."""
         ctx = self.context
         parts = [
-            f"## Company Context",
+            "## Company Context",
             f"**Company:** {ctx.name}",
             f"**Industry:** {ctx.industry}",
             f"**Stage:** {ctx.stage}",
@@ -279,7 +280,7 @@ class CSuiteOrchestrator:
         if ctx.revenue_model:
             parts.append(f"**Revenue Model:** {ctx.revenue_model}")
         if ctx.goals:
-            parts.append(f"**Goals:**")
+            parts.append("**Goals:**")
             for g in ctx.goals:
                 parts.append(f"- {g}")
         return "\n".join(parts)

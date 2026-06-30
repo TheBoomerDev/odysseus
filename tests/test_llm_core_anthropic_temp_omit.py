@@ -10,6 +10,7 @@ Earlier Claude models (Opus 4.6 and below, every Sonnet/Haiku) still accept
 temperature in [0.0, 1.0], so the omission is version-gated — the clamp-to-[0,1]
 behavior for those models (test_llm_core_anthropic_temp_clamp.py) is unchanged.
 """
+
 import os
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")

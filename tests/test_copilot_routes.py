@@ -1,6 +1,6 @@
 """DB-backed tests for Copilot endpoint provisioning (routes/copilot_routes.py)."""
+
 import json
-import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -19,7 +19,8 @@ def _mem_db(monkeypatch):
 def test_provision_creates_owner_scoped_endpoint(monkeypatch):
     TestSessionLocal = _mem_db(monkeypatch)
     monkeypatch.setattr(
-        cr.copilot, "fetch_models",
+        cr.copilot,
+        "fetch_models",
         lambda base, token: [
             {"id": "gpt-4o", "tool_calls": True, "vision": True},
             {"id": "claude-3.5", "tool_calls": True, "vision": False},
@@ -46,7 +47,11 @@ def test_provision_creates_owner_scoped_endpoint(monkeypatch):
 
 def test_provision_refreshes_existing_token(monkeypatch):
     TestSessionLocal = _mem_db(monkeypatch)
-    monkeypatch.setattr(cr.copilot, "fetch_models", lambda base, token: [{"id": "gpt-4o", "tool_calls": True}])
+    monkeypatch.setattr(
+        cr.copilot,
+        "fetch_models",
+        lambda base, token: [{"id": "gpt-4o", "tool_calls": True}],
+    )
 
     first = cr._provision_endpoint("OLD", "https://api.githubcopilot.com", "bob")
     second = cr._provision_endpoint("NEW", "https://api.githubcopilot.com", "bob")

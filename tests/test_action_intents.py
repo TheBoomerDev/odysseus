@@ -50,7 +50,9 @@ def test_research_action_promotes_to_agent():
 
 
 def test_explicit_web_search_promotes_to_agent():
-    assert message_needs_tools("use web search and find a recipe for chocolate chip cookies")
+    assert message_needs_tools(
+        "use web search and find a recipe for chocolate chip cookies"
+    )
     assert message_needs_tools("do a web search for the best chocolate chip cookies")
     assert message_needs_tools("search the web for current RTX 3090 prices")
     assert classify_tool_intent("use web search and find a recipe").category == "web"
@@ -58,7 +60,9 @@ def test_explicit_web_search_promotes_to_agent():
 
 def test_explanatory_calendar_questions_stay_plain_chat():
     assert not message_needs_tools("How do I add an entry to my calendar?")
-    assert not message_needs_tools("What about the built-in Odysseus calendar, is that linked to email?")
+    assert not message_needs_tools(
+        "What about the built-in Odysseus calendar, is that linked to email?"
+    )
     assert not message_needs_tools("Can you explain how calendar reminders work?")
     intent = classify_tool_intent("How do I add an entry to my calendar?")
     assert not intent.needs_tools
@@ -68,4 +72,7 @@ def test_explanatory_calendar_questions_stay_plain_chat():
 def test_router_reports_non_calendar_categories():
     assert classify_tool_intent("reply to that email").category == "email"
     assert classify_tool_intent("open my calendar").category == "ui"
-    assert classify_tool_intent("research cost effective local models").category == "research"
+    assert (
+        classify_tool_intent("research cost effective local models").category
+        == "research"
+    )

@@ -43,7 +43,9 @@ def _function_body(src: str, signature: str) -> str:
 
 
 HANDLE_DOC_UPDATE = _function_body(DOC_JS, "export function handleDocUpdate(data)")
-STREAM_DOC_OPEN = _function_body(DOC_JS, "export function streamDocOpen(title, language)")
+STREAM_DOC_OPEN = _function_body(
+    DOC_JS, "export function streamDocOpen(title, language)"
+)
 
 
 def test_handle_doc_update_discards_pending_diff():

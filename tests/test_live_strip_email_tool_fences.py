@@ -20,6 +20,7 @@ the behavioral tests exercise an equivalent Python regex built straight from the
 backend ``TOOL_TAGS`` — the same source the live regex now derives from — and
 source-level guards assert the frontend keeps no hard-coded list.
 """
+
 import re
 from pathlib import Path
 
@@ -45,7 +46,9 @@ def _exec_fence_regex() -> re.Pattern:
     derives from: the backend TOOL_TAGS (served via /api/tools) minus bash/python."""
     tags = _tool_tags() - _NON_STRIPPED
     assert tags, "TOOL_TAGS is empty"
-    return re.compile(r"```(?:" + "|".join(sorted(tags)) + r")\s*\n[\s\S]*?```", re.IGNORECASE)
+    return re.compile(
+        r"```(?:" + "|".join(sorted(tags)) + r")\s*\n[\s\S]*?```", re.IGNORECASE
+    )
 
 
 def test_strips_executed_email_tool_fences():
@@ -58,8 +61,14 @@ def test_strips_executed_email_tool_fences():
 def test_strips_every_named_email_tool_fence():
     rx = _exec_fence_regex()
     email_tools = [
-        "list_email_accounts", "send_email", "list_emails", "read_email",
-        "reply_to_email", "bulk_email", "archive_email", "delete_email",
+        "list_email_accounts",
+        "send_email",
+        "list_emails",
+        "read_email",
+        "reply_to_email",
+        "bulk_email",
+        "archive_email",
+        "delete_email",
         "mark_email_read",
     ]
     for tool in email_tools:
@@ -99,7 +108,9 @@ def test_frontend_keeps_no_hardcoded_tool_list():
         "EXEC_FENCE_RE."
     )
     # The bash/python carve-out must survive the move to the runtime list.
-    m = re.search(r"EXEC_FENCE_NON_TOOL\s*=\s*new Set\(\[(?P<body>.*?)\]\)", source, re.DOTALL)
+    m = re.search(
+        r"EXEC_FENCE_NON_TOOL\s*=\s*new Set\(\[(?P<body>.*?)\]\)", source, re.DOTALL
+    )
     assert m, "bash/python carve-out (EXEC_FENCE_NON_TOOL) not found in chatRenderer.js"
     carve_out = set(re.findall(r"['\"]([a-z_]+)['\"]", m.group("body")))
     assert carve_out == _NON_STRIPPED, (

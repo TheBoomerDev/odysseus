@@ -9,6 +9,7 @@ untouched; multiline caret navigation is not hijacked; Shift/Alt/Ctrl/Meta+Arrow
 are ignored; IME composition does not trigger recall; last message is read from
 #chat-history (dataset.raw), not session sidebar metadata.
 """
+
 import json
 import shutil
 import subprocess
@@ -274,4 +275,7 @@ def test_integration_recalls_from_chat_history_dom():
         timeout=30,
     )
     assert proc.returncode == 0, proc.stderr
-    assert json.loads(proc.stdout.strip()) == {"value": "stored prompt", "prevented": True}
+    assert json.loads(proc.stdout.strip()) == {
+        "value": "stored prompt",
+        "prevented": True,
+    }

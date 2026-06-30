@@ -22,12 +22,16 @@ def _matches(s):
 
 def test_extracts_action_array_from_prose():
     s = 'Here you go:\n[{"action":"add","title":"Standup","start":"2026-07-01T09:00"}]\nThanks!'
-    assert _matches(s) == ['[{"action":"add","title":"Standup","start":"2026-07-01T09:00"}]']
+    assert _matches(s) == [
+        '[{"action":"add","title":"Standup","start":"2026-07-01T09:00"}]'
+    ]
 
 
 def test_extracts_multi_object_array():
     s = 'prose [{"action":"add","title":"A"},{"action":"cancel","uid":"x"}] tail'
-    assert _matches(s) == ['[{"action":"add","title":"A"},{"action":"cancel","uid":"x"}]']
+    assert _matches(s) == [
+        '[{"action":"add","title":"A"},{"action":"cancel","uid":"x"}]'
+    ]
 
 
 def test_no_array_returns_no_match():
@@ -42,7 +46,7 @@ def test_bracket_in_string_value_still_extracts():
 
 
 def test_adversarial_input_is_fast():
-    evil = '[{"action"},{' + '}},{{' * 100_000  # exploded the old exponential pattern
+    evil = '[{"action"},{' + "}},{{" * 100_000  # exploded the old exponential pattern
     start = time.perf_counter()
     _CAL_ACTION_ARRAY_RE.search(evil)
     dt = time.perf_counter() - start

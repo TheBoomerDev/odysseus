@@ -93,6 +93,7 @@ def _provision_endpoint(token: str, base: str, owner: Optional[str]) -> Dict:
     # Best-effort: refresh the model cache so the new endpoint shows up.
     try:
         from routes.model_routes import _invalidate_models_cache
+
         _invalidate_models_cache()
     except Exception:
         pass
@@ -144,7 +145,11 @@ def _poll_device_flow(_request: Request, pending: Dict) -> DeviceFlowPoll:
 
     token = data.get("access_token")
     if token:
-        base = copilot.enterprise_base(pending["enterprise_url"]) if pending["enterprise_url"] else copilot.COPILOT_BASE
+        base = (
+            copilot.enterprise_base(pending["enterprise_url"])
+            if pending["enterprise_url"]
+            else copilot.COPILOT_BASE
+        )
         try:
             result = _provision_endpoint(token, base, pending["owner"])
         except Exception as e:

@@ -40,11 +40,16 @@ def test_only_gguf_models_recommended_on_windows():
     recommended there must ship a real GGUF — no vLLM-only AWQ/GPTQ/FP8."""
     catalog = {m["name"]: m for m in get_models()}
     unservable = [
-        r["name"] for r in rank_models(_windows_system(), limit=900)
-        if not (catalog.get(r["name"], {}).get("is_gguf")
-                or catalog.get(r["name"], {}).get("gguf_sources"))
+        r["name"]
+        for r in rank_models(_windows_system(), limit=900)
+        if not (
+            catalog.get(r["name"], {}).get("is_gguf")
+            or catalog.get(r["name"], {}).get("gguf_sources")
+        )
     ]
-    assert unservable == [], f"{len(unservable)} non-GGUF models on Windows, e.g. {unservable[:3]}"
+    assert unservable == [], (
+        f"{len(unservable)} non-GGUF models on Windows, e.g. {unservable[:3]}"
+    )
 
 
 def test_safetensors_models_still_recommended_on_cuda():

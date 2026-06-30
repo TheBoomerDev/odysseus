@@ -9,22 +9,24 @@ from src import cookbook_serve_lifecycle as lifecycle
 async def test_tick_persists_only_successfully_stopped_serves(tmp_path, monkeypatch):
     state_path = tmp_path / "cookbook_state.json"
     state_path.write_text(
-        json.dumps({
-            "tasks": [
-                {
-                    "id": "stop-succeeds",
-                    "type": "serve",
-                    "status": "running",
-                    "_scheduledStopAtMs": 0,
-                },
-                {
-                    "id": "stop-fails",
-                    "type": "serve",
-                    "status": "running",
-                    "_scheduledStopAtMs": 0,
-                },
-            ]
-        }),
+        json.dumps(
+            {
+                "tasks": [
+                    {
+                        "id": "stop-succeeds",
+                        "type": "serve",
+                        "status": "running",
+                        "_scheduledStopAtMs": 0,
+                    },
+                    {
+                        "id": "stop-fails",
+                        "type": "serve",
+                        "status": "running",
+                        "_scheduledStopAtMs": 0,
+                    },
+                ]
+            }
+        ),
         encoding="utf-8",
     )
 

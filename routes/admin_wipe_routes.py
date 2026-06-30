@@ -31,7 +31,13 @@ from core.database import (
     CalendarEvent,
     CalendarCal,
 )
-from src.constants import DATA_DIR, SKILLS_DIR, SKILLS_FILE, GALLERY_DIR, GALLERY_UPLOADS_DIR
+from src.constants import (
+    DATA_DIR,
+    SKILLS_DIR,
+    SKILLS_FILE,
+    GALLERY_DIR,
+    GALLERY_UPLOADS_DIR,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +102,7 @@ def setup_admin_wipe_routes(session_manager):
                 # initialised in every deployment.
                 try:
                     from src.memory_vector import get_memory_vector_store
+
                     mv = get_memory_vector_store()
                     if mv and hasattr(mv, "clear"):
                         mv.clear()

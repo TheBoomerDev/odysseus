@@ -20,7 +20,10 @@ def test_normal_schema_renders_unchanged():
         "properties": {"path": {"type": "string"}, "limit": {"type": "integer"}},
         "required": ["path"],
     }
-    assert _format_mcp_params(schema) == ' Args (JSON): {"path": string (required), "limit": integer}'
+    assert (
+        _format_mcp_params(schema)
+        == ' Args (JSON): {"path": string (required), "limit": integer}'
+    )
 
 
 def test_hostile_field_name_cannot_inject_newlines():
@@ -62,7 +65,9 @@ def test_large_param_set_is_capped():
 
 def test_total_hint_length_is_capped():
     # Even pathological schemas (many long names) stay within the backstop.
-    props = {("k" * 30 + str(i)): {"type": "string" * 10} for i in range(_MCP_PARAM_MAX)}
+    props = {
+        ("k" * 30 + str(i)): {"type": "string" * 10} for i in range(_MCP_PARAM_MAX)
+    }
     out = _format_mcp_params({"type": "object", "properties": props})
     assert len(out) <= _MCP_HINT_MAX
 

@@ -184,8 +184,7 @@ async def test_learn_sender_signatures_writes_owner_scoped_cache(monkeypatch, tm
                         b"Thanks for the update.\r\n\r\n"
                         b"Regards,\r\n"
                         b"Writer Example\r\n"
-                        b"Example Co.\r\n"
-                        + str(uid).encode()
+                        b"Example Co.\r\n" + str(uid).encode()
                     ),
                 )
             ]
@@ -238,7 +237,9 @@ async def test_learn_sender_signatures_writes_owner_scoped_cache(monkeypatch, tm
 
 
 @pytest.mark.asyncio
-async def test_check_email_urgency_resolves_llm_candidates_for_task_owner(monkeypatch, tmp_path):
+async def test_check_email_urgency_resolves_llm_candidates_for_task_owner(
+    monkeypatch, tmp_path
+):
     from core import database
     from src.builtin_actions import TaskNoop, action_check_email_urgency
 

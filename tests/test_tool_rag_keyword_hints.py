@@ -15,15 +15,21 @@ These hints are deterministic string matching — no embeddings — so we can te
 from src.tool_index import ToolIndex, ALWAYS_AVAILABLE
 
 _EMAIL_TOOLS = {
-    "list_emails", "read_email", "send_email", "reply_to_email",
-    "bulk_email", "delete_email", "archive_email", "mark_email_read",
+    "list_emails",
+    "read_email",
+    "send_email",
+    "reply_to_email",
+    "bulk_email",
+    "delete_email",
+    "archive_email",
+    "mark_email_read",
 }
 
 
 def _index_without_embeddings():
     """A ToolIndex whose retrieval returns nothing, so get_tools_for_query
     exercises only the deterministic base + keyword-hint logic."""
-    ti = ToolIndex.__new__(ToolIndex)        # skip __init__ (no ChromaDB/fastembed)
+    ti = ToolIndex.__new__(ToolIndex)  # skip __init__ (no ChromaDB/fastembed)
     ti.retrieve = lambda query, k=8: []
     return ti
 
@@ -35,7 +41,9 @@ def test_tell_in_web_query_does_not_force_email_tools():
     q = "visit https://www.youtube.com/user/PewDiePie and tell me the title of his latest video"
     tools = ti.get_tools_for_query(q)
     leaked = _EMAIL_TOOLS & tools
-    assert not leaked, f"'tell me' must not force-include email tools, got {sorted(leaked)}"
+    assert not leaked, (
+        f"'tell me' must not force-include email tools, got {sorted(leaked)}"
+    )
     # web_search / web_fetch are always-available and must remain present.
     assert "web_search" in tools and "web_fetch" in tools
 
@@ -44,7 +52,9 @@ def test_explicit_web_search_query_gets_web_tools_without_retrieval():
     """Explicit web-search phrasing must surface web tools even if embeddings
     return nothing."""
     ti = _index_without_embeddings()
-    tools = ti.get_tools_for_query("use web search and find a recipe for chocolate chip cookies")
+    tools = ti.get_tools_for_query(
+        "use web search and find a recipe for chocolate chip cookies"
+    )
     assert "web_search" in tools and "web_fetch" in tools
 
 

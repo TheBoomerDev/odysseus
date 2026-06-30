@@ -24,7 +24,7 @@ loop — no portal thread, no BaseHTTPMiddleware — so the suite is portable.
 Identity is injected by a pure-ASGI shim that writes the same
 ``request.state`` fields the real auth middleware sets.
 """
-import uuid
+
 from types import SimpleNamespace
 
 import httpx
@@ -110,8 +110,15 @@ def env(monkeypatch, tmp_path):
     app = _build_app(factory)
 
     db = factory()
-    db.add(Note(id="note-alice", owner="alice", title="a", content="x",
-                items='[{"text": "t", "done": false}]'))
+    db.add(
+        Note(
+            id="note-alice",
+            owner="alice",
+            title="a",
+            content="x",
+            items='[{"text": "t", "done": false}]',
+        )
+    )
     db.add(Note(id="note-bob", owner="bob", title="b", content="y"))
     db.commit()
     db.close()
@@ -123,12 +130,16 @@ async def test_no_identity_fails_closed_on_every_owner_scoped_route(env):
     async with _client(app) as c:
         assert (await c.get("/api/notes")).status_code == 401
         assert (await c.get("/api/notes/note-alice")).status_code == 401
-        assert (await c.put("/api/notes/note-alice", json={"title": "pwn"})).status_code == 401
+        assert (
+            await c.put("/api/notes/note-alice", json={"title": "pwn"})
+        ).status_code == 401
         assert (await c.delete("/api/notes/note-alice")).status_code == 401
         assert (await c.post("/api/notes/note-alice/pin")).status_code == 401
         assert (await c.post("/api/notes/note-alice/archive")).status_code == 401
         assert (await c.post("/api/notes/note-alice/items/0/toggle")).status_code == 401
-        assert (await c.post("/api/notes/reorder", json={"ids": ["note-bob", "note-alice"]})).status_code == 401
+        assert (
+            await c.post("/api/notes/reorder", json={"ids": ["note-bob", "note-alice"]})
+        ).status_code == 401
         assert (await c.post("/api/notes", json={"title": "ghost"})).status_code == 401
 
 
@@ -155,7 +166,9 @@ async def test_authenticated_user_still_scoped_to_own_notes(env):
         assert (await c.get("/api/notes/note-alice", headers=alice)).status_code == 200
         # Someone else's note stays a 404 (don't reveal it exists).
         assert (await c.get("/api/notes/note-bob", headers=alice)).status_code == 404
-        assert (await c.put("/api/notes/note-alice", json={"title": "mine"}, headers=alice)).status_code == 200
+        assert (
+            await c.put("/api/notes/note-alice", json={"title": "mine"}, headers=alice)
+        ).status_code == 200
 
 
 async def test_api_token_pseudo_user_is_rejected(env):
@@ -184,5 +197,7 @@ async def test_auth_disabled_keeps_single_user_mode_working(monkeypatch, tmp_pat
 
     async with _client(app) as c:
         assert [n["id"] for n in (await c.get("/api/notes")).json()["notes"]] == ["n1"]
-        assert (await c.put("/api/notes/n1", json={"title": "still mine"})).status_code == 200
+        assert (
+            await c.put("/api/notes/n1", json={"title": "still mine"})
+        ).status_code == 200
         assert (await c.post("/api/notes/n1/pin")).status_code == 200

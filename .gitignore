@@ -103,3 +103,4 @@ compound.config.json
 _scratch/
 /odysseus/
 repomix-output.md
+test_venv/

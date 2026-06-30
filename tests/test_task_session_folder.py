@@ -1,4 +1,5 @@
 """Task sessions must be assigned folder='Tasks' at creation time."""
+
 import inspect
 from src.task_scheduler import TaskScheduler
 

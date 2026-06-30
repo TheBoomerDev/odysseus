@@ -6,6 +6,7 @@ So importing your own backup silently drops any skill whose title (or id)
 collides with ANOTHER user's skill — the same cross-tenant data-loss bug
 that was already fixed for memories in the block just above.
 """
+
 import pytest
 
 from fastapi import FastAPI, Request
@@ -61,7 +62,12 @@ class FakeSkillsManager:
     def add_skill(self, title=None, name=None, owner=None, **kwargs):
         # Mirrors services.memory.skills.add_skill: persists a SKILL.md row and
         # returns its identity. source="user" skips auto-dedup, so no _deduped.
-        entry = {"id": f"new-{len(self.rows)}", "title": title, "name": name, "owner": owner}
+        entry = {
+            "id": f"new-{len(self.rows)}",
+            "title": title,
+            "name": name,
+            "owner": owner,
+        }
         self.rows.append(entry)
         return {"name": name, "id": entry["id"]}
 
@@ -69,8 +75,9 @@ class FakeSkillsManager:
 def _make_client(skills_mgr, monkeypatch):
     # Bypass the admin gate and read the importer straight off request.state.
     monkeypatch.setattr(backup_routes, "require_admin", lambda *a, **k: None)
-    monkeypatch.setattr(backup_routes, "get_current_user",
-                        lambda req: getattr(req.state, "user", None))
+    monkeypatch.setattr(
+        backup_routes, "get_current_user", lambda req: getattr(req.state, "user", None)
+    )
     app = FastAPI()
 
     @app.middleware("http")
@@ -85,9 +92,11 @@ def _make_client(skills_mgr, monkeypatch):
 
 def test_import_skill_not_dropped_by_other_users_title_collision(monkeypatch):
     # Bob already owns a skill titled "Deploy". Alice (the importer) has none.
-    skills_mgr = FakeSkillsManager([
-        {"id": "bob-1", "title": "Deploy", "name": "Deploy", "owner": "bob"},
-    ])
+    skills_mgr = FakeSkillsManager(
+        [
+            {"id": "bob-1", "title": "Deploy", "name": "Deploy", "owner": "bob"},
+        ]
+    )
     client = _make_client(skills_mgr, monkeypatch)
 
     # Alice imports HER OWN backup containing a skill also titled "Deploy".

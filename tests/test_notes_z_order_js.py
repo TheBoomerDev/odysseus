@@ -16,7 +16,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 HELPER = ROOT / "static" / "js" / "toolWindowZOrder.js"
-pytestmark = pytest.mark.skipif(not shutil.which("node"), reason="node binary not on PATH")
+pytestmark = pytest.mark.skipif(
+    not shutil.which("node"), reason="node binary not on PATH"
+)
 
 
 def _node_eval(source: str):

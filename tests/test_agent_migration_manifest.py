@@ -9,7 +9,9 @@ SCRIPT_PATH = ROOT / "scripts" / "agent_migration_manifest.py"
 
 
 def load_module():
-    spec = importlib.util.spec_from_file_location("agent_migration_manifest", SCRIPT_PATH)
+    spec = importlib.util.spec_from_file_location(
+        "agent_migration_manifest", SCRIPT_PATH
+    )
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
@@ -23,7 +25,11 @@ def test_collect_memory_json_accepts_strings_and_objects(tmp_path):
         json.dumps(
             [
                 "Pacey prefers GLM for routine coding.",
-                {"text": "Odysseus runs on a self-hosted machine.", "category": "project", "source": "manual"},
+                {
+                    "text": "Odysseus runs on a self-hosted machine.",
+                    "category": "project",
+                    "source": "manual",
+                },
                 {"content": "Duplicate source keys still work.", "category": "fact"},
             ]
         ),
@@ -42,7 +48,9 @@ def test_collect_memory_json_accepts_strings_and_objects(tmp_path):
 def test_collect_memory_json_deduplicates_exact_text(tmp_path):
     migration = load_module()
     path = tmp_path / "memories.json"
-    path.write_text(json.dumps(["Same memory", {"text": "Same memory"}]), encoding="utf-8")
+    path.write_text(
+        json.dumps(["Same memory", {"text": "Same memory"}]), encoding="utf-8"
+    )
 
     items, warnings = migration.collect_memory_json(path, "example-agent")
 
@@ -110,7 +118,9 @@ def test_archive_content_is_optional(tmp_path):
     archive.write_text("# Notes\n\nUseful context.", encoding="utf-8")
 
     metadata_only, _ = migration.collect_archive_paths([archive], "example-agent")
-    with_content, _ = migration.collect_archive_paths([archive], "example-agent", include_content=True)
+    with_content, _ = migration.collect_archive_paths(
+        [archive], "example-agent", include_content=True
+    )
 
     assert metadata_only[0]["kind"] == "archive_document"
     assert "content" not in metadata_only[0]
@@ -126,7 +136,9 @@ def test_archive_skips_symlinked_file(tmp_path):
     linked_file = archive_dir / "leak.md"
     linked_file.symlink_to(outside)
 
-    items, warnings = migration.collect_archive_paths([archive_dir], "example-agent", include_content=True)
+    items, warnings = migration.collect_archive_paths(
+        [archive_dir], "example-agent", include_content=True
+    )
 
     assert items == []
     assert warnings[0].message == "skipped symlinked archive path"
@@ -139,7 +151,9 @@ def test_archive_skips_symlinked_root(tmp_path):
     linked_archive = tmp_path / "linked-notes.md"
     linked_archive.symlink_to(archive)
 
-    items, warnings = migration.collect_archive_paths([linked_archive], "example-agent", include_content=True)
+    items, warnings = migration.collect_archive_paths(
+        [linked_archive], "example-agent", include_content=True
+    )
 
     assert items == []
     assert warnings[0].message == "archive path is a symlink; skipped"
@@ -158,7 +172,10 @@ def test_conversation_json_imports_generic_threads_metadata_only(tmp_path):
                         "created_at": "2026-06-01T00:00:00Z",
                         "messages": [
                             {"role": "user", "content": "Can we design this?"},
-                            {"role": "assistant", "content": "Yes, start with a narrow slice."},
+                            {
+                                "role": "assistant",
+                                "content": "Yes, start with a narrow slice.",
+                            },
                         ],
                     }
                 ]
@@ -188,7 +205,10 @@ def test_conversation_json_can_embed_generic_thread_content(tmp_path):
                 {
                     "title": "Preference",
                     "messages": [
-                        {"sender": "human", "content": [{"type": "text", "text": "Use terse replies."}]},
+                        {
+                            "sender": "human",
+                            "content": [{"type": "text", "text": "Use terse replies."}],
+                        },
                         {"sender": "ai", "text": "Noted."},
                     ],
                 }
@@ -197,7 +217,9 @@ def test_conversation_json_can_embed_generic_thread_content(tmp_path):
         encoding="utf-8",
     )
 
-    items, warnings = migration.collect_conversation_json(path, "example-agent", include_content=True)
+    items, warnings = migration.collect_conversation_json(
+        path, "example-agent", include_content=True
+    )
 
     assert warnings == []
     assert items[0]["metadata"]["content_included"] is True
@@ -222,7 +244,10 @@ def test_conversation_json_imports_chatgpt_mapping_ordered_by_time(tmp_path):
                                 "id": "m2",
                                 "create_time": 20,
                                 "author": {"role": "assistant"},
-                                "content": {"content_type": "text", "parts": ["Second"]},
+                                "content": {
+                                    "content_type": "text",
+                                    "parts": ["Second"],
+                                },
                             }
                         },
                         "a": {
@@ -240,13 +265,25 @@ def test_conversation_json_imports_chatgpt_mapping_ordered_by_time(tmp_path):
         encoding="utf-8",
     )
 
-    items, warnings = migration.collect_conversation_json(path, "chatgpt", include_content=True)
+    items, warnings = migration.collect_conversation_json(
+        path, "chatgpt", include_content=True
+    )
 
     assert warnings == []
     assert items[0]["metadata"]["source_format"] == "chatgpt_mapping"
     assert items[0]["messages"] == [
-        {"role": "user", "text": "First", "created_at": "1970-01-01T00:00:10Z", "source_id": "m1"},
-        {"role": "assistant", "text": "Second", "created_at": "1970-01-01T00:00:20Z", "source_id": "m2"},
+        {
+            "role": "user",
+            "text": "First",
+            "created_at": "1970-01-01T00:00:10Z",
+            "source_id": "m1",
+        },
+        {
+            "role": "assistant",
+            "text": "Second",
+            "created_at": "1970-01-01T00:00:20Z",
+            "source_id": "m2",
+        },
     ]
 
 
@@ -277,7 +314,10 @@ def test_conversation_content_respects_message_limit(tmp_path):
 
     assert "messages" not in items[0]
     assert items[0]["metadata"]["content_included"] is False
-    assert warnings[0].message == "skipped conversation content at index 0: over 1 messages"
+    assert (
+        warnings[0].message
+        == "skipped conversation content at index 0: over 1 messages"
+    )
 
 
 def test_archive_missing_path_warns(tmp_path):
@@ -295,7 +335,9 @@ def test_main_writes_manifest_with_conversation_thread(tmp_path):
     conversation_path = tmp_path / "conversations.json"
     output_path = tmp_path / "manifest.json"
     conversation_path.write_text(
-        json.dumps([{"title": "A thread", "messages": [{"role": "user", "content": "hello"}]}]),
+        json.dumps(
+            [{"title": "A thread", "messages": [{"role": "user", "content": "hello"}]}]
+        ),
         encoding="utf-8",
     )
 
@@ -320,7 +362,9 @@ def test_main_writes_manifest(tmp_path):
     migration = load_module()
     memory_path = tmp_path / "memories.json"
     output_path = tmp_path / "manifest.json"
-    memory_path.write_text(json.dumps([{"text": "A useful fact", "category": "fact"}]), encoding="utf-8")
+    memory_path.write_text(
+        json.dumps([{"text": "A useful fact", "category": "fact"}]), encoding="utf-8"
+    )
 
     exit_code = migration.main(
         [

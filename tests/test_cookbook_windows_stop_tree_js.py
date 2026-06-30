@@ -14,10 +14,24 @@ def _between(source, start, end):
 
 def test_windows_graceful_kill_reuses_recursive_stop_tree_helper():
     source = RUNNING_JS.read_text(encoding="utf-8")
-    wrapper = _between(source, "function _winPowerShellCmd(task, ps)", "function _winSessionStopTreePs(task)")
-    helper = _between(source, "function _winSessionStopTreePs(task)", "function _tmuxGracefulKill(task)")
-    graceful = _between(source, "function _tmuxGracefulKill(task)", "function _shQuote(value)")
-    win_session = _between(source, "function _winSessionCmd(task, tmuxArgs)", "function _winPowerShellCmd(task, ps)")
+    wrapper = _between(
+        source,
+        "function _winPowerShellCmd(task, ps)",
+        "function _winSessionStopTreePs(task)",
+    )
+    helper = _between(
+        source,
+        "function _winSessionStopTreePs(task)",
+        "function _tmuxGracefulKill(task)",
+    )
+    graceful = _between(
+        source, "function _tmuxGracefulKill(task)", "function _shQuote(value)"
+    )
+    win_session = _between(
+        source,
+        "function _winSessionCmd(task, tmuxArgs)",
+        "function _winPowerShellCmd(task, ps)",
+    )
 
     assert "function Stop-Tree([int]$Id)" in helper
     assert "('ParentProcessId = ' + $Id)" in helper

@@ -975,15 +975,30 @@ def setup_shell_routes() -> APIRouter:
             if line.startswith("ID=") or line.startswith("ID_LIKE="):
                 ids += line.split("=", 1)[1].strip().strip('"').split()
         ids = [i.lower() for i in ids]
-        if any(x in ids for x in ("debian", "ubuntu", "linuxmint", "pop", "elementary")):
+        if any(
+            x in ids for x in ("debian", "ubuntu", "linuxmint", "pop", "elementary")
+        ):
             return "debian"
-        if any(x in ids for x in ("arch", "manjaro", "endeavouros", "cachyos", "garuda")):
+        if any(
+            x in ids for x in ("arch", "manjaro", "endeavouros", "cachyos", "garuda")
+        ):
             return "arch"
-        if any(x in ids for x in ("fedora", "rhel", "centos", "rocky", "almalinux", "ol")):
+        if any(
+            x in ids for x in ("fedora", "rhel", "centos", "rocky", "almalinux", "ol")
+        ):
             return "fedora"
         if "alpine" in ids:
             return "alpine"
-        if any(x in ids for x in ("suse", "opensuse", "opensuse-leap", "opensuse-tumbleweed", "sles")):
+        if any(
+            x in ids
+            for x in (
+                "suse",
+                "opensuse",
+                "opensuse-leap",
+                "opensuse-tumbleweed",
+                "sles",
+            )
+        ):
             return "suse"
         return ""
 
@@ -994,26 +1009,96 @@ def setup_shell_routes() -> APIRouter:
     # are added only when the detected backend needs them.
     _PKG_NAMES = {
         # canonical-name → {os_id: [actual_pkg_names_on_this_os]}
-        "cmake":           {"debian": ["cmake"], "arch": ["cmake"], "fedora": ["cmake"], "alpine": ["cmake"], "suse": ["cmake"], "macos": ["cmake"]},
-        "build-essential": {"debian": ["build-essential"], "arch": ["base-devel"], "fedora": ["gcc", "gcc-c++", "make"], "alpine": ["build-base"], "suse": ["gcc-c++", "make"], "macos": []},
-        "g++":             {"debian": ["g++"], "arch": ["gcc"], "fedora": ["gcc-c++"], "alpine": ["g++"], "suse": ["gcc-c++"], "macos": []},
-        "gcc":             {"debian": ["gcc"], "arch": ["gcc"], "fedora": ["gcc"], "alpine": ["gcc"], "suse": ["gcc"], "macos": []},
-        "make":            {"debian": ["make"], "arch": ["make"], "fedora": ["make"], "alpine": ["make"], "suse": ["make"], "macos": []},
-        "git":             {"debian": ["git"], "arch": ["git"], "fedora": ["git"], "alpine": ["git"], "suse": ["git"], "macos": ["git"]},
-        "tmux":            {"debian": ["tmux"], "arch": ["tmux"], "fedora": ["tmux"], "alpine": ["tmux"], "suse": ["tmux"], "macos": ["tmux"]},
+        "cmake": {
+            "debian": ["cmake"],
+            "arch": ["cmake"],
+            "fedora": ["cmake"],
+            "alpine": ["cmake"],
+            "suse": ["cmake"],
+            "macos": ["cmake"],
+        },
+        "build-essential": {
+            "debian": ["build-essential"],
+            "arch": ["base-devel"],
+            "fedora": ["gcc", "gcc-c++", "make"],
+            "alpine": ["build-base"],
+            "suse": ["gcc-c++", "make"],
+            "macos": [],
+        },
+        "g++": {
+            "debian": ["g++"],
+            "arch": ["gcc"],
+            "fedora": ["gcc-c++"],
+            "alpine": ["g++"],
+            "suse": ["gcc-c++"],
+            "macos": [],
+        },
+        "gcc": {
+            "debian": ["gcc"],
+            "arch": ["gcc"],
+            "fedora": ["gcc"],
+            "alpine": ["gcc"],
+            "suse": ["gcc"],
+            "macos": [],
+        },
+        "make": {
+            "debian": ["make"],
+            "arch": ["make"],
+            "fedora": ["make"],
+            "alpine": ["make"],
+            "suse": ["make"],
+            "macos": [],
+        },
+        "git": {
+            "debian": ["git"],
+            "arch": ["git"],
+            "fedora": ["git"],
+            "alpine": ["git"],
+            "suse": ["git"],
+            "macos": ["git"],
+        },
+        "tmux": {
+            "debian": ["tmux"],
+            "arch": ["tmux"],
+            "fedora": ["tmux"],
+            "alpine": ["tmux"],
+            "suse": ["tmux"],
+            "macos": ["tmux"],
+        },
     }
     _BACKEND_EXTRAS = {
-        "cuda":   {"debian": ["nvidia-cuda-toolkit"], "arch": ["cuda"], "fedora": ["cuda-toolkit"], "alpine": [], "suse": ["cuda"], "macos": []},
-        "rocm":   {"debian": ["rocm-dev"], "arch": ["rocm-hip-sdk"], "fedora": ["rocm-devel"], "alpine": [], "suse": ["rocm-dev"], "macos": []},
-        "vulkan": {"debian": ["libvulkan-dev", "vulkan-tools"], "arch": ["vulkan-headers", "vulkan-tools"], "fedora": ["vulkan-headers", "vulkan-tools"], "alpine": ["vulkan-loader-dev", "vulkan-tools"], "suse": ["vulkan-devel", "vulkan-tools"], "macos": []},
+        "cuda": {
+            "debian": ["nvidia-cuda-toolkit"],
+            "arch": ["cuda"],
+            "fedora": ["cuda-toolkit"],
+            "alpine": [],
+            "suse": ["cuda"],
+            "macos": [],
+        },
+        "rocm": {
+            "debian": ["rocm-dev"],
+            "arch": ["rocm-hip-sdk"],
+            "fedora": ["rocm-devel"],
+            "alpine": [],
+            "suse": ["rocm-dev"],
+            "macos": [],
+        },
+        "vulkan": {
+            "debian": ["libvulkan-dev", "vulkan-tools"],
+            "arch": ["vulkan-headers", "vulkan-tools"],
+            "fedora": ["vulkan-headers", "vulkan-tools"],
+            "alpine": ["vulkan-loader-dev", "vulkan-tools"],
+            "suse": ["vulkan-devel", "vulkan-tools"],
+            "macos": [],
+        },
     }
     _PKG_MGR = {
         "debian": "sudo apt install -y {pkgs}",
-        "arch":   "sudo pacman -S --needed {pkgs}",
+        "arch": "sudo pacman -S --needed {pkgs}",
         "fedora": "sudo dnf install -y {pkgs}",
         "alpine": "sudo apk add {pkgs}",
-        "suse":   "sudo zypper install -n {pkgs}",
-        "macos":  "brew install {pkgs}",
+        "suse": "sudo zypper install -n {pkgs}",
+        "macos": "brew install {pkgs}",
     }
 
     def _install_cmd_for_target(os_id: str, backend: str, missing: list[str]) -> str:
@@ -1025,13 +1110,15 @@ def setup_shell_routes() -> APIRouter:
         for m in missing:
             for p in _PKG_NAMES.get(m, {}).get(os_id, []):
                 if p not in seen:
-                    pkgs.append(p); seen.add(p)
+                    pkgs.append(p)
+                    seen.add(p)
         # Add backend-specific extras only when the build would actually
         # consume them (a CUDA toolkit isn't useful on a Vulkan box).
         backend = (backend or "").lower()
         for p in _BACKEND_EXTRAS.get(backend, {}).get(os_id, []):
             if p not in seen:
-                pkgs.append(p); seen.add(p)
+                pkgs.append(p)
+                seen.add(p)
         if not pkgs:
             return ""
         return _PKG_MGR[os_id].format(pkgs=" ".join(pkgs))
@@ -1259,16 +1346,24 @@ def setup_shell_routes() -> APIRouter:
                         stderr=asyncio.subprocess.PIPE,
                     )
                     out, _err = await asyncio.wait_for(proc.communicate(), timeout=8)
-                    llama_server_path = out.decode("utf-8", errors="replace").strip().splitlines()
-                    llama_server_path = llama_server_path[-1].strip() if llama_server_path else ""
+                    llama_server_path = (
+                        out.decode("utf-8", errors="replace").strip().splitlines()
+                    )
+                    llama_server_path = (
+                        llama_server_path[-1].strip() if llama_server_path else ""
+                    )
                     if llama_server_path:
                         remote_status["llama_cpp"] = True
                         probe = remote_details.setdefault("llama_cpp", {})
                         if isinstance(probe, dict):
-                            probe.setdefault("binaries", {})["llama-server"] = llama_server_path
+                            probe.setdefault("binaries", {})["llama-server"] = (
+                                llama_server_path
+                            )
                 except Exception as e:
                     if not remote_probe_error:
-                        remote_probe_error = f"SSH llama-server probe failed: {str(e)[:160]}"
+                        remote_probe_error = (
+                            f"SSH llama-server probe failed: {str(e)[:160]}"
+                        )
                     pass
         # Union of system_names + every package's system_prereqs. Probing
         # the prereqs alongside the main system deps in a single SSH call
@@ -1291,7 +1386,9 @@ def setup_shell_routes() -> APIRouter:
                     checks.append(
                         f"if command -v {qn} >/dev/null 2>&1; then echo {qn}=1; else echo {qn}=0; fi"
                     )
-                checks.append("echo '---OSREL---'; cat /etc/os-release 2>/dev/null || true")
+                checks.append(
+                    "echo '---OSREL---'; cat /etc/os-release 2>/dev/null || true"
+                )
                 inner = " ; ".join(checks)
                 argv = _ssh_base_argv(host, ssh_port) + [inner]
                 proc = await asyncio.create_subprocess_exec(
@@ -1304,7 +1401,8 @@ def setup_shell_routes() -> APIRouter:
                 _section, _osrel_lines = "probe", []
                 for line in txt.splitlines():
                     if line.strip() == "---OSREL---":
-                        _section = "osrel"; continue
+                        _section = "osrel"
+                        continue
                     if _section == "osrel":
                         _osrel_lines.append(line)
                         continue
@@ -1433,14 +1531,16 @@ def setup_shell_routes() -> APIRouter:
                         probe = (
                             f'{_vp}python3 -c "import llama_cpp; import sys; '
                             'sys.exit(0 if llama_cpp.llama_supports_gpu_offload() else 1)" '
-                            '&& echo llama_cpp_gpu=1 || echo llama_cpp_gpu=0; '
-                            'command -v nvidia-smi >/dev/null 2>&1 '
+                            "&& echo llama_cpp_gpu=1 || echo llama_cpp_gpu=0; "
+                            "command -v nvidia-smi >/dev/null 2>&1 "
                             '&& nvidia-smi -L 2>/dev/null | grep -q "GPU " '
-                            '&& echo nvidia=1 || echo nvidia=0'
+                            "&& echo nvidia=1 || echo nvidia=0"
                         )
                         argv = _ssh_base_argv(host, ssh_port) + [probe]
                         proc = await asyncio.create_subprocess_exec(
-                            *argv, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+                            *argv,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE,
                         )
                         out, _ = await asyncio.wait_for(proc.communicate(), timeout=8)
                         txt = out.decode("utf-8", errors="replace")
@@ -1453,13 +1553,16 @@ def setup_shell_routes() -> APIRouter:
                 else:
                     try:
                         import llama_cpp as _lcp  # type: ignore
+
                         _gpu_capable = bool(_lcp.llama_supports_gpu_offload())
                     except Exception:
                         _gpu_capable = False
                     _has_nvidia_target = shutil.which("nvidia-smi") is not None
                 if (not _gpu_capable) and _has_nvidia_target:
                     pkg["partial"] = True
-                    pkg["partial_reason"] = "Installed but CPU-only wheel — GPU detected on this target. Upgrade to a CUDA wheel for ~10× faster inference."
+                    pkg["partial_reason"] = (
+                        "Installed but CPU-only wheel — GPU detected on this target. Upgrade to a CUDA wheel for ~10× faster inference."
+                    )
                     pkg["partial_action"] = "reinstall_llama_cpp_cuda"
             # Attach per-package system_prereqs status. We probed each
             # prereq name above; surface "Missing build deps: …" ONLY
@@ -1486,16 +1589,26 @@ def setup_shell_routes() -> APIRouter:
                     # back to the multi-distro hint only when the target's
                     # OS can't be classified (e.g. ssh probe failed).
                     _resolved_os = target_os_id or "debian"  # safest default
-                    _cmd = _install_cmd_for_target(_resolved_os, backend or "", _missing)
+                    _cmd = _install_cmd_for_target(
+                        _resolved_os, backend or "", _missing
+                    )
                     if _cmd and target_os_id:
-                        _hint = "Missing build deps for this target: " + ", ".join(_missing)
+                        _hint = "Missing build deps for this target: " + ", ".join(
+                            _missing
+                        )
                         pkg["install_cmd_for_target"] = _cmd
                         pkg["install_cmd_os"] = target_os_id
                         pkg["install_cmd_backend"] = (backend or "").lower()
                     else:
-                        _hint = "Missing build deps: " + ", ".join(_missing) + ". Install via apt: cmake build-essential git / pacman: cmake base-devel git / dnf: cmake gcc-c++ make git / brew: cmake git."
+                        _hint = (
+                            "Missing build deps: "
+                            + ", ".join(_missing)
+                            + ". Install via apt: cmake build-essential git / pacman: cmake base-devel git / dnf: cmake gcc-c++ make git / brew: cmake git."
+                        )
                     _existing_note = pkg.get("status_note") or ""
-                    pkg["status_note"] = (_existing_note + " — " + _hint) if _existing_note else _hint
+                    pkg["status_note"] = (
+                        (_existing_note + " — " + _hint) if _existing_note else _hint
+                    )
                     pkg["build_deps_missing"] = _missing
 
             if pkg.get("installed"):
@@ -1578,21 +1691,37 @@ def setup_shell_routes() -> APIRouter:
         ALLOWED = {"cmake", "build-essential", "g++", "gcc", "git", "tmux", "make"}
         pkgs = [str(p).strip() for p in raw if str(p).strip() in ALLOWED]
         if not pkgs:
-            return {"ok": False, "error": "no installable packages requested (allowlist: " + ", ".join(sorted(ALLOWED)) + ")"}
+            return {
+                "ok": False,
+                "error": "no installable packages requested (allowlist: "
+                + ", ".join(sorted(ALLOWED))
+                + ")",
+            }
+
         # Re-map to the right package name per OS. apt/dpkg use the names
         # as-is; pacman has base-devel for build-essential, etc.
-        def _apt(names): return list(names)
+        def _apt(names):
+            return list(names)
+
         def _pacman(names):
             return ["base-devel" if n == "build-essential" else n for n in names]
+
         def _dnf(names):
             out = []
             for n in names:
-                if n == "build-essential": out += ["gcc", "gcc-c++", "make"]
-                elif n == "g++": out += ["gcc-c++"]
-                else: out.append(n)
+                if n == "build-essential":
+                    out += ["gcc", "gcc-c++", "make"]
+                elif n == "g++":
+                    out += ["gcc-c++"]
+                else:
+                    out.append(n)
             return out
+
         def _brew(names):
-            return [n for n in names if n not in ("build-essential", "g++", "gcc", "make")]
+            return [
+                n for n in names if n not in ("build-essential", "g++", "gcc", "make")
+            ]
+
         # Build a single shell snippet that detects the package manager and
         # runs the right install. Non-interactive sudo (-n) only — if sudo
         # asks for a password the script reports it instead of hanging.
@@ -1605,18 +1734,20 @@ def setup_shell_routes() -> APIRouter:
         # left stderr empty and the frontend toast fell through to a
         # bare "HTTP 200" instead of surfacing the real reason.
         script = (
-            'set -e; '
-            'if ! sudo -n true 2>/dev/null; then '
-            '  echo "ERROR: passwordless sudo unavailable on this target. Run once: sudo apt install -y ' + " ".join(pkgs) + ' (or your distro equivalent: pacman -S, dnf install, brew install). After that, Cookbook can install the rest." >&2; exit 2; fi; '
-            'if command -v apt-get >/dev/null 2>&1; then '
-            f'  sudo -n env DEBIAN_FRONTEND=noninteractive apt-get update -qq && sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends {apt_pkgs}; '
-            'elif command -v pacman >/dev/null 2>&1; then '
-            f'  sudo -n pacman -Sy --needed --noconfirm {pac_pkgs}; '
-            'elif command -v dnf >/dev/null 2>&1; then '
-            f'  sudo -n dnf install -y {dnf_pkgs}; '
-            'elif command -v brew >/dev/null 2>&1; then '
-            f'  brew install {brew_pkgs}; '
-            'else '
+            "set -e; "
+            "if ! sudo -n true 2>/dev/null; then "
+            '  echo "ERROR: passwordless sudo unavailable on this target. Run once: sudo apt install -y '
+            + " ".join(pkgs)
+            + ' (or your distro equivalent: pacman -S, dnf install, brew install). After that, Cookbook can install the rest." >&2; exit 2; fi; '
+            "if command -v apt-get >/dev/null 2>&1; then "
+            f"  sudo -n env DEBIAN_FRONTEND=noninteractive apt-get update -qq && sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends {apt_pkgs}; "
+            "elif command -v pacman >/dev/null 2>&1; then "
+            f"  sudo -n pacman -Sy --needed --noconfirm {pac_pkgs}; "
+            "elif command -v dnf >/dev/null 2>&1; then "
+            f"  sudo -n dnf install -y {dnf_pkgs}; "
+            "elif command -v brew >/dev/null 2>&1; then "
+            f"  brew install {brew_pkgs}; "
+            "else "
             '  echo "ERROR: no supported package manager (apt/pacman/dnf/brew) on this target." >&2; exit 3; fi'
         )
         try:
@@ -1633,7 +1764,7 @@ def setup_shell_routes() -> APIRouter:
             out, err = await asyncio.wait_for(proc.communicate(), timeout=180)
         except asyncio.TimeoutError:
             return {"ok": False, "error": "Install timed out after 180s"}
-        ok = (proc.returncode == 0)
+        ok = proc.returncode == 0
         # Combine stderr + (last lines of stdout) into a single error
         # blob when ok=False — some package managers print useful failure
         # context to stdout, and a script that exits via `echo ...; exit N`

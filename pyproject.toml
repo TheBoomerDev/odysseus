@@ -20,3 +20,11 @@ markers = [
     # duration evidence (see tests/run_focus.py --durations and tests/README.md).
     "slow: opt-in marker for known-slow tests; excluded by the fast lane (not slow)",
 ]
+
+[tool.coverage.run]
+source = ["cortex"]
+omit = ["*/test_*"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true

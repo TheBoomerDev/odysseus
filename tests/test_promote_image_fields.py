@@ -8,6 +8,7 @@ the image renders deterministically, without relying on the model echoing the UR
 into prose. These cases cover the absolute-URL, relative-URL, no-URL, and
 non-success-exit paths.
 """
+
 from src.tool_execution import _promote_image_fields
 
 
@@ -25,7 +26,9 @@ def test_absolute_url_promoted_with_fields():
         "size: 1024x1024"
     )
     _promote_image_fields(r)
-    assert r["image_url"] == "https://odysseus.example.com/api/generated-image/abc123.png"
+    assert (
+        r["image_url"] == "https://odysseus.example.com/api/generated-image/abc123.png"
+    )
     assert r["image_prompt"] == "a red fox in snow"
     assert r["image_model"] == "qwen-image"
     assert r["image_size"] == "1024x1024"
@@ -34,8 +37,7 @@ def test_absolute_url_promoted_with_fields():
 def test_relative_url_promoted():
     """A relative /api/generated-image/... path (no host) is still matched."""
     r = _result(
-        "Generated image for: a cat\n"
-        "Direct link: /api/generated-image/def456.png"
+        "Generated image for: a cat\nDirect link: /api/generated-image/def456.png"
     )
     _promote_image_fields(r)
     assert r["image_url"] == "/api/generated-image/def456.png"

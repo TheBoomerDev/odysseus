@@ -13,7 +13,9 @@ def _setup(monkeypatch, windows):
     """windows: {endpoint_url: context_length}. Force the remote path."""
     monkeypatch.setattr(mc, "is_local_endpoint", lambda url: False)
     monkeypatch.setattr(mc, "_configured_endpoint_kind", lambda url: "api")
-    monkeypatch.setattr(mc, "_query_context_length", lambda url, model: (windows[url], True))
+    monkeypatch.setattr(
+        mc, "_query_context_length", lambda url, model: (windows[url], True)
+    )
     mc._context_cache.clear()
 
 

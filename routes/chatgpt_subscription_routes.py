@@ -26,18 +26,23 @@ def _provision_endpoint(tokens: Dict, owner: Optional[str]) -> Dict:
     access_token = tokens.get("access_token")
     refresh_token = tokens.get("refresh_token")
     if not access_token or not refresh_token:
-        raise ValueError("ChatGPT token response was missing access_token or refresh_token")
+        raise ValueError(
+            "ChatGPT token response was missing access_token or refresh_token"
+        )
 
     base = chatgpt_subscription.DEFAULT_CHATGPT_SUBSCRIPTION_BASE_URL
     models = chatgpt_subscription.fetch_available_models(access_token)
     if not models:
-        raise ValueError("ChatGPT Subscription connected, but no usable Codex models were discovered for this account.")
+        raise ValueError(
+            "ChatGPT Subscription connected, but no usable Codex models were discovered for this account."
+        )
     db = SessionLocal()
     try:
         auth = (
             db.query(ProviderAuthSession)
             .filter(
-                ProviderAuthSession.provider == chatgpt_subscription.CHATGPT_SUBSCRIPTION_PROVIDER,
+                ProviderAuthSession.provider
+                == chatgpt_subscription.CHATGPT_SUBSCRIPTION_PROVIDER,
                 ProviderAuthSession.owner == owner,
             )
             .first()
@@ -116,7 +121,10 @@ def _start_device_flow(request: Request, _form) -> DeviceFlowStart:
     user_code = data.get("user_code")
     if not device_auth_id or not user_code:
         raise HTTPException(502, "ChatGPT did not return a complete device code")
-    verification_uri = data.get("verification_uri") or f"{chatgpt_subscription.CHATGPT_OAUTH_ISSUER}/codex/device"
+    verification_uri = (
+        data.get("verification_uri")
+        or f"{chatgpt_subscription.CHATGPT_OAUTH_ISSUER}/codex/device"
+    )
     return DeviceFlowStart(
         pending={
             "device_auth_id": device_auth_id,
@@ -134,7 +142,9 @@ def _start_device_flow(request: Request, _form) -> DeviceFlowStart:
 
 def _poll_device_flow(_request: Request, pending: Dict) -> DeviceFlowPoll:
     try:
-        data = chatgpt_subscription.poll_device_auth(pending["device_auth_id"], pending["user_code"])
+        data = chatgpt_subscription.poll_device_auth(
+            pending["device_auth_id"], pending["user_code"]
+        )
     except Exception as exc:
         logger.debug("ChatGPT device poll failed: %s", exc)
         return DeviceFlowPoll.pending(str(exc))
@@ -143,7 +153,9 @@ def _poll_device_flow(_request: Request, pending: Dict) -> DeviceFlowPoll:
     code_verifier = data.get("code_verifier")
     if authorization_code and code_verifier:
         try:
-            tokens = chatgpt_subscription.exchange_authorization_code(authorization_code, code_verifier)
+            tokens = chatgpt_subscription.exchange_authorization_code(
+                authorization_code, code_verifier
+            )
             result = _provision_endpoint(tokens, pending["owner"])
         except Exception as exc:
             logger.exception("ChatGPT Subscription endpoint provisioning failed")

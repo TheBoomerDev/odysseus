@@ -1,4 +1,5 @@
 """Tests for endpoint_resolver — endpoint/model selection and enabled-model filtering."""
+
 import json
 
 from src.endpoint_resolver import (
@@ -10,6 +11,7 @@ from src.endpoint_resolver import (
 
 class _Ep:
     """Minimal ModelEndpoint stand-in for the model-picking helpers."""
+
     def __init__(self, cached=None, hidden=None):
         self.cached_models = json.dumps(cached) if cached is not None else None
         self.hidden_models = json.dumps(hidden) if hidden is not None else None
@@ -31,11 +33,14 @@ class TestEnabledModels:
     def test_excludes_hidden(self):
         # The Groq repro: 16 models, only gpt-oss-120b enabled.
         cached = [
-            "openai/gpt-oss-safeguard-20b", "canopylabs/orpheus-arabic-saudi",
-            "whisper-large-v3", "openai/gpt-oss-120b",
+            "openai/gpt-oss-safeguard-20b",
+            "canopylabs/orpheus-arabic-saudi",
+            "whisper-large-v3",
+            "openai/gpt-oss-120b",
         ]
         hidden = [
-            "openai/gpt-oss-safeguard-20b", "canopylabs/orpheus-arabic-saudi",
+            "openai/gpt-oss-safeguard-20b",
+            "canopylabs/orpheus-arabic-saudi",
             "whisper-large-v3",
         ]
         ep = _Ep(cached=cached, hidden=hidden)

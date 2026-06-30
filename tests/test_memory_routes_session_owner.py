@@ -6,6 +6,7 @@ caller-supplied session id, so without an ownership gate a user could target
 another tenant's session and leak their chat history, session-scoped LLM
 credentials, or session title.
 """
+
 import asyncio
 import io
 import sys
@@ -33,7 +34,10 @@ def _router(monkeypatch, caller):
     sm = MagicMock()
     sm.sessions = {}
     sm.get_session = lambda sid: SimpleNamespace(
-        owner="alice", name="Secret project", endpoint_url="http://x", model="m",
+        owner="alice",
+        name="Secret project",
+        endpoint_url="http://x",
+        model="m",
         headers={"Authorization": "Bearer victim-secret"},
         get_context_messages=lambda: [],
     )
@@ -52,12 +56,16 @@ def _request(user):
 def _upload(name="memories.json"):
     return UploadFile(
         filename=name,
-        file=io.BytesIO(b'[{"text": "Project Phoenix uses Python", "category": "project"}]'),
+        file=io.BytesIO(
+            b'[{"text": "Project Phoenix uses Python", "category": "project"}]'
+        ),
     )
 
 
 def _allow_memory_management(monkeypatch):
-    monkeypatch.setattr("src.auth_helpers.require_privilege", lambda request, privilege: "alice")
+    monkeypatch.setattr(
+        "src.auth_helpers.require_privilege", lambda request, privilege: "alice"
+    )
 
 
 def test_extract_rejects_other_users_session(monkeypatch):
@@ -113,8 +121,12 @@ def test_audit_session_fallback_uses_resolver_without_manual_default(monkeypatch
             return fallback_url, fallback_model, fallback_headers
         return None, None, {}
 
-    async def fake_audit_memories(memory_manager_arg, memory_vector_arg, endpoint_url, model, headers, owner=None):
-        audit_calls.append((memory_manager_arg, memory_vector_arg, endpoint_url, model, headers, owner))
+    async def fake_audit_memories(
+        memory_manager_arg, memory_vector_arg, endpoint_url, model, headers, owner=None
+    ):
+        audit_calls.append(
+            (memory_manager_arg, memory_vector_arg, endpoint_url, model, headers, owner)
+        )
         return {"before": 2, "after": 1}
 
     fake_model_routes = types.ModuleType("routes.model_routes")
@@ -126,31 +138,39 @@ def test_audit_session_fallback_uses_resolver_without_manual_default(monkeypatch
     fake_model_routes.build_chat_url = lambda base: f"{base}/chat/completions"
 
     monkeypatch.setattr(mr, "resolve_task_endpoint", fake_resolve_task_endpoint)
-    monkeypatch.setattr(task_endpoint, "resolve_task_endpoint", fake_resolve_task_endpoint)
+    monkeypatch.setattr(
+        task_endpoint, "resolve_task_endpoint", fake_resolve_task_endpoint
+    )
     monkeypatch.setattr(mr, "audit_memories", fake_audit_memories)
     monkeypatch.setitem(sys.modules, "routes.model_routes", fake_model_routes)
     monkeypatch.setattr(
         mr,
         "SessionLocal",
-        lambda: (_ for _ in ()).throw(AssertionError("manual default branch should not run")),
+        lambda: (_ for _ in ()).throw(
+            AssertionError("manual default branch should not run")
+        ),
     )
 
     out = asyncio.run(audit_route(request=_request("alice"), session="session-1"))
 
-    assert resolver_calls == [(
-        "http://session.example/v1/chat/completions",
-        "session-model",
-        session_headers,
-        "alice",
-    )]
-    assert audit_calls == [(
-        memory_manager,
-        memory_vector,
-        "http://session.example/v1/chat/completions",
-        "session-model",
-        session_headers,
-        "alice",
-    )]
+    assert resolver_calls == [
+        (
+            "http://session.example/v1/chat/completions",
+            "session-model",
+            session_headers,
+            "alice",
+        )
+    ]
+    assert audit_calls == [
+        (
+            memory_manager,
+            memory_vector,
+            "http://session.example/v1/chat/completions",
+            "session-model",
+            session_headers,
+            "alice",
+        )
+    ]
     assert out["ok"] is True
     assert out["removed"] == 1
 
@@ -168,7 +188,9 @@ def test_add_memory_rejects_other_users_session(monkeypatch):
 
     memory_manager.load.return_value = []
     memory_manager.find_duplicates.return_value = False
-    session_manager.get_session.return_value = SimpleNamespace(owner="bob", name="Bob session")
+    session_manager.get_session.return_value = SimpleNamespace(
+        owner="bob", name="Bob session"
+    )
 
     with pytest.raises(HTTPException) as exc:
         asyncio.run(
@@ -195,7 +217,9 @@ def test_timeline_does_not_expose_other_users_session_name():
     memory_manager = MagicMock()
     session_manager = MagicMock()
     session_manager.sessions = {"bob-session": object()}
-    session_manager.get_session.return_value = SimpleNamespace(owner="bob", name="Bob roadmap")
+    session_manager.get_session.return_value = SimpleNamespace(
+        owner="bob", name="Bob roadmap"
+    )
     memory_manager.load.return_value = [
         {
             "id": "m1",
@@ -219,13 +243,19 @@ def test_import_missing_session_uses_utility_fallback(monkeypatch):
     session_manager = MagicMock()
     session_manager.get_session.side_effect = KeyError
     resolve_endpoint = MagicMock(return_value=("http://utility", "utility-model", {}))
-    resolve_task_endpoint = MagicMock(side_effect=AssertionError("session task endpoint should not be used"))
+    resolve_task_endpoint = MagicMock(
+        side_effect=AssertionError("session task endpoint should not be used")
+    )
     monkeypatch.setattr(mr, "resolve_endpoint", resolve_endpoint)
     monkeypatch.setattr(mr, "resolve_task_endpoint", resolve_task_endpoint)
     router = mr.setup_memory_routes(memory_manager, session_manager)
     import_memories = _route(router, "/api/memory/import", "POST")
 
-    out = asyncio.run(import_memories(request=_request("alice"), session="missing-session", file=_upload()))
+    out = asyncio.run(
+        import_memories(
+            request=_request("alice"), session="missing-session", file=_upload()
+        )
+    )
 
     assert out == {
         "suggestions": [{"text": "Project Phoenix uses Python", "category": "project"}],
@@ -246,15 +276,23 @@ def test_import_foreign_session_uses_same_utility_fallback(monkeypatch):
         headers={"Authorization": "Bearer bob-secret"},
     )
     resolve_endpoint = MagicMock(return_value=("http://utility", "utility-model", {}))
-    resolve_task_endpoint = MagicMock(side_effect=AssertionError("foreign session endpoint should not be used"))
+    resolve_task_endpoint = MagicMock(
+        side_effect=AssertionError("foreign session endpoint should not be used")
+    )
     monkeypatch.setattr(mr, "resolve_endpoint", resolve_endpoint)
     monkeypatch.setattr(mr, "resolve_task_endpoint", resolve_task_endpoint)
     router = mr.setup_memory_routes(memory_manager, session_manager)
     import_memories = _route(router, "/api/memory/import", "POST")
 
-    out = asyncio.run(import_memories(request=_request("alice"), session="bob-session", file=_upload()))
+    out = asyncio.run(
+        import_memories(
+            request=_request("alice"), session="bob-session", file=_upload()
+        )
+    )
 
-    assert out["suggestions"] == [{"text": "Project Phoenix uses Python", "category": "project"}]
+    assert out["suggestions"] == [
+        {"text": "Project Phoenix uses Python", "category": "project"}
+    ]
     session_manager.get_session.assert_called_once_with("bob-session")
     resolve_endpoint.assert_called_once_with("utility", owner="alice")
 
@@ -269,16 +307,26 @@ def test_import_owned_session_uses_session_endpoint(monkeypatch):
         model="alice-model",
         headers={"X-Session": "alice"},
     )
-    resolve_endpoint = MagicMock(side_effect=AssertionError("utility fallback should not be used"))
-    resolve_task_endpoint = MagicMock(return_value=("http://alice-task", "alice-task-model", {"X-Task": "alice"}))
+    resolve_endpoint = MagicMock(
+        side_effect=AssertionError("utility fallback should not be used")
+    )
+    resolve_task_endpoint = MagicMock(
+        return_value=("http://alice-task", "alice-task-model", {"X-Task": "alice"})
+    )
     monkeypatch.setattr(mr, "resolve_endpoint", resolve_endpoint)
     monkeypatch.setattr(mr, "resolve_task_endpoint", resolve_task_endpoint)
     router = mr.setup_memory_routes(memory_manager, session_manager)
     import_memories = _route(router, "/api/memory/import", "POST")
 
-    out = asyncio.run(import_memories(request=_request("alice"), session="alice-session", file=_upload()))
+    out = asyncio.run(
+        import_memories(
+            request=_request("alice"), session="alice-session", file=_upload()
+        )
+    )
 
-    assert out["suggestions"] == [{"text": "Project Phoenix uses Python", "category": "project"}]
+    assert out["suggestions"] == [
+        {"text": "Project Phoenix uses Python", "category": "project"}
+    ]
     session_manager.get_session.assert_called_once_with("alice-session")
     resolve_task_endpoint.assert_called_once_with(
         "http://alice-llm",

@@ -6,10 +6,10 @@ Uses mocked DB to test in-memory session management logic in isolation.
 
 import sys
 import os
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pytest
-from unittest.mock import MagicMock, patch
 
 from core.session_manager import SessionManager
 from core.models import Session, ChatMessage
@@ -94,13 +94,13 @@ class TestSessionIsolation:
         s.history = replacement
 
         assert s._history is replacement
-        assert s.get_context_messages() == [
-            {"role": "user", "content": "replacement"}
-        ]
+        assert s.get_context_messages() == [{"role": "user", "content": "replacement"}]
 
     def test_delete_session_removes_from_cache(self, sm):
         """delete_session must remove session from in-memory cache even when DB lookup fails."""
-        s = Session(id="unique-del", name="ToDelete", endpoint_url="http://ep", model="model")
+        s = Session(
+            id="unique-del", name="ToDelete", endpoint_url="http://ep", model="model"
+        )
         sm.sessions["unique-del"] = s
         assert "unique-del" in sm.sessions
         sm.delete_session("unique-del")
@@ -113,8 +113,12 @@ class TestSessionIsolation:
 
     def test_empty_session_isolation(self, sm):
         """Empty session must not inherit messages from active sessions."""
-        s_empty = Session(id="empty", name="Empty", endpoint_url="http://ep", model="model")
-        s_active = Session(id="active", name="Active", endpoint_url="http://ep", model="model")
+        s_empty = Session(
+            id="empty", name="Empty", endpoint_url="http://ep", model="model"
+        )
+        s_active = Session(
+            id="active", name="Active", endpoint_url="http://ep", model="model"
+        )
         sm.sessions["empty"] = s_empty
         sm.sessions["active"] = s_active
 
@@ -178,9 +182,7 @@ class TestSessionIsolation:
         ctx.append({"role": "user", "content": "injected"})
 
         ctx2 = s.get_context_messages()
-        assert len(ctx2) == 1, (
-            f"get_context_messages leaked: {len(ctx2)} messages"
-        )
+        assert len(ctx2) == 1, f"get_context_messages leaked: {len(ctx2)} messages"
         assert ctx2[0]["content"] == "original"
 
     def test_get_session_uses_cache(self, sm):

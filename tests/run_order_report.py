@@ -19,6 +19,7 @@ passed to ``pytest.main`` as an in-process plugin; no conftest or global
 plugin is involved. Reproduction requires the reported working directory,
 seed, pytest arguments, and test environment. The exit code is pytest's own.
 """
+
 from __future__ import annotations
 
 import argparse

@@ -8,16 +8,30 @@ gpt-oss-20b sometimes writes:
 That is an intended tool call in non-native/textual tool mode, but older parsing
 only recognized fenced blocks, [TOOL_CALL], XML invoke, and tool_code markup.
 """
+
 import json
 import sys
 from unittest.mock import MagicMock
 
-for mod in ['src.agent_tools', 'src.tool_parsing', 'src.tool_schemas', 'src.tool_execution']:
+for mod in [
+    "src.agent_tools",
+    "src.tool_parsing",
+    "src.tool_schemas",
+    "src.tool_execution",
+]:
     sys.modules.pop(mod, None)
 for mod in [
-    'sqlalchemy', 'sqlalchemy.orm', 'sqlalchemy.ext', 'sqlalchemy.ext.declarative',
-    'sqlalchemy.ext.hybrid', 'sqlalchemy.sql', 'sqlalchemy.sql.expression',
-    'src.database', 'core.models', 'core.database', 'core.auth'
+    "sqlalchemy",
+    "sqlalchemy.orm",
+    "sqlalchemy.ext",
+    "sqlalchemy.ext.declarative",
+    "sqlalchemy.ext.hybrid",
+    "sqlalchemy.sql",
+    "sqlalchemy.sql.expression",
+    "src.database",
+    "core.models",
+    "core.database",
+    "core.auth",
 ]:
     if mod not in sys.modules:
         sys.modules[mod] = MagicMock()

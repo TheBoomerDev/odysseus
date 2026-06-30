@@ -20,7 +20,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 HELPER = ROOT / "static" / "js" / "toolWindowZOrder.js"
-pytestmark = pytest.mark.skipif(not shutil.which("node"), reason="node binary not on PATH")
+pytestmark = pytest.mark.skipif(
+    not shutil.which("node"), reason="node binary not on PATH"
+)
 
 
 def _node_eval(source: str):
@@ -100,7 +102,9 @@ def test_late_routed_dropdowns_use_top_portal_z(rel):
     assert "topPortalZ()" in src, f"{rel} must call topPortalZ() for its dropdown z"
 
 
-@pytest.mark.parametrize("rel", ["static/js/tasks.js", "static/js/skills.js", "static/style.css"])
+@pytest.mark.parametrize(
+    "rel", ["static/js/tasks.js", "static/js/skills.js", "static/style.css"]
+)
 def test_no_hardcoded_portal_z_literals_remain(rel):
     src = (ROOT / rel).read_text()
     # Match the exact 100000/100002 these dropdowns used; the trailing-digit

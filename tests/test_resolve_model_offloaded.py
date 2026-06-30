@@ -39,13 +39,16 @@ async def test_do_pipeline_resolves_model_off_the_event_loop(monkeypatch):
     )
 
     assert all("error" in r for r in results)
-    assert state["peak"] == 2, "resolutions did not overlap — call still blocks the loop"
+    assert state["peak"] == 2, (
+        "resolutions did not overlap — call still blocks the loop"
+    )
 
 
 async def test_do_pipeline_uses_offloaded_resolution_result(monkeypatch):
     # The offload must also return the resolved tuple, not just propagate errors.
     monkeypatch.setattr(
-        ai, "_resolve_model",
+        ai,
+        "_resolve_model",
         lambda spec, owner=None: ("http://x/v1/chat/completions", "resolved-model", {}),
     )
 

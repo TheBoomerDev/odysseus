@@ -12,6 +12,7 @@ the chat message with no attachments.
 The fix counts genuine recent upload *events*, independent of the current
 batch's file count. save_upload still enforces the per-minute rate limit.
 """
+
 import io
 import re
 import types
@@ -71,7 +72,9 @@ _NOW = 5_000.0
 
 def _endpoint(router):
     for r in router.routes:
-        if getattr(r, "path", None) == "/api/upload" and "POST" in getattr(r, "methods", set()):
+        if getattr(r, "path", None) == "/api/upload" and "POST" in getattr(
+            r, "methods", set()
+        ):
             return r.endpoint
     raise AssertionError("upload endpoint not found")
 
@@ -87,7 +90,9 @@ def _files(n):
     return [types.SimpleNamespace(filename=f"f{i}.txt") for i in range(n)]
 
 
-def _image_upload(name="photo.png", content=b"not really png but enough for route metadata"):
+def _image_upload(
+    name="photo.png", content=b"not really png but enough for route metadata"
+):
     return types.SimpleNamespace(filename=name, file=io.BytesIO(content))
 
 
@@ -140,6 +145,7 @@ async def test_genuine_recent_volume_still_throttled():
 # save_upload() counts each file against upload_rate_limit, which was 5 while
 # the composer allows MAX_FILES=10. ──────────────────────────────────────────
 
+
 def _max_files_from_frontend() -> int:
     src = (_REPO / "static/js/fileHandler.js").read_text(encoding="utf-8")
     m = re.search(r"MAX_FILES\s*=\s*(\d+)", src)
@@ -151,7 +157,9 @@ def test_rate_limit_accommodates_a_full_batch():
     # The per-minute file cap must comfortably exceed the frontend batch cap,
     # or a single legitimate multi-file attach trips it (issue #1346).
     h = UploadHandler.__new__(UploadHandler)
-    UploadHandler.__init__(h, base_dir="/tmp", upload_dir="/tmp/_odysseus_test_uploads_cfg")
+    UploadHandler.__init__(
+        h, base_dir="/tmp", upload_dir="/tmp/_odysseus_test_uploads_cfg"
+    )
     assert h.upload_rate_limit >= _max_files_from_frontend()
 
 
@@ -197,7 +205,11 @@ async def test_chat_image_upload_is_added_to_gallery(tmp_path, monkeypatch):
     assert uploaded["gallery_id"]
     db = TestingSession()
     try:
-        image = db.query(GalleryImage).filter(GalleryImage.id == uploaded["gallery_id"]).one()
+        image = (
+            db.query(GalleryImage)
+            .filter(GalleryImage.id == uploaded["gallery_id"])
+            .one()
+        )
         assert image.owner == "alice"
         assert image.model == "chat-upload"
         assert image.prompt == "photo.png"
@@ -222,10 +234,15 @@ async def test_non_image_chat_upload_is_not_added_to_gallery(tmp_path, monkeypat
     up.setup_upload_routes(h)
     endpoint = _endpoint(up.router)
 
-    result = await endpoint(_request(user="alice"), [types.SimpleNamespace(
-        filename="notes.txt",
-        file=io.BytesIO(b"plain text upload"),
-    )])
+    result = await endpoint(
+        _request(user="alice"),
+        [
+            types.SimpleNamespace(
+                filename="notes.txt",
+                file=io.BytesIO(b"plain text upload"),
+            )
+        ],
+    )
 
     assert "gallery_id" not in result["files"][0]
     db = TestingSession()

@@ -17,7 +17,9 @@ def _db_path(handler: UploadHandler) -> str:
     return os.path.join(handler.upload_dir, "uploads.json")
 
 
-def _write_upload_file(handler: UploadHandler, file_id: str, content: bytes = b"content") -> str:
+def _write_upload_file(
+    handler: UploadHandler, file_id: str, content: bytes = b"content"
+) -> str:
     upload_day = Path(handler.upload_dir) / "2026" / "06" / "09"
     upload_day.mkdir(parents=True, exist_ok=True)
     path = upload_day / file_id

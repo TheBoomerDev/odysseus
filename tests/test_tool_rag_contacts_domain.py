@@ -44,8 +44,12 @@ def test_contact_lookup_requests_get_contacts_domain():
 
 def test_contact_management_requests_get_contacts_domain():
     """Add/update/delete contact phrasings also resolve to the contacts domain."""
-    for p in ("add a new contact", "update Bob's phone number", "delete that contact",
-              "save this person to contacts"):
+    for p in (
+        "add a new contact",
+        "update Bob's phone number",
+        "delete that contact",
+        "save this person to contacts",
+    ):
         intent = _classify(p)
         assert "contacts" in intent["domains"], f"expected contacts domain for: {p!r}"
 
@@ -67,6 +71,8 @@ def test_contacts_domain_has_a_rule_pack():
 def test_non_contact_requests_do_not_match_contacts_domain():
     """Guard against over-triggering: ordinary prompts must not be flagged contacts."""
     assert "contacts" not in _classify("what is the capital of France")["domains"]
-    assert "contacts" not in _classify("reply to the latest email in my inbox")["domains"]
+    assert (
+        "contacts" not in _classify("reply to the latest email in my inbox")["domains"]
+    )
     assert "contacts" not in _classify("generate an image of a sunset")["domains"]
     assert "contacts" not in _classify("what's 2 plus 2")["domains"]

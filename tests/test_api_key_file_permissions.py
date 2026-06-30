@@ -10,6 +10,7 @@ POSIX-only: ``core.platform_compat.safe_chmod`` is a documented no-op on Windows
 (files under the user profile are ACL-restricted), so the mode assertions are
 skipped there.
 """
+
 import os
 import stat
 import sys
@@ -29,7 +30,9 @@ def _mode(path: str) -> int:
 def test_new_key_file_is_owner_only(tmp_path):
     mgr = APIKeyManager(str(tmp_path))
     mgr.get_or_create_key()
-    assert _mode(mgr.key_file) == 0o600, f"expected 0o600, got {oct(_mode(mgr.key_file))}"
+    assert _mode(mgr.key_file) == 0o600, (
+        f"expected 0o600, got {oct(_mode(mgr.key_file))}"
+    )
 
 
 @pytest.mark.skipif(_WINDOWS, reason="POSIX permission bits only")
@@ -40,7 +43,9 @@ def test_existing_world_readable_key_is_relocked(tmp_path):
         f.write(b"x" * 44)
     os.chmod(mgr.key_file, 0o644)
     mgr.get_or_create_key()  # existing-file branch should re-lock it
-    assert _mode(mgr.key_file) == 0o600, f"expected re-lock to 0o600, got {oct(_mode(mgr.key_file))}"
+    assert _mode(mgr.key_file) == 0o600, (
+        f"expected re-lock to 0o600, got {oct(_mode(mgr.key_file))}"
+    )
 
 
 def test_encrypt_decrypt_roundtrip_still_works(tmp_path):

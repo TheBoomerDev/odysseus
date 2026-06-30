@@ -10,11 +10,13 @@ separate from provider identification.
 conftest.py stubs the heavy deps (sqlalchemy, src.database), so importing the
 real module is side-effect free.
 """
+
 from src.llm_core import _format_upstream_error
 
 
 # ── _format_upstream_error ──
 # Status + body → one-line provider-aware sentence.
+
 
 class TestFormatUpstreamError:
     def test_401_rejects_key_with_provider_and_detail(self):
@@ -52,11 +54,15 @@ class TestFormatUpstreamError:
         assert msg == "OpenAI returned HTTP 418"
 
     def test_string_error_field(self):
-        msg = _format_upstream_error(401, '{"error": "bad key"}', "https://api.openai.com/v1")
+        msg = _format_upstream_error(
+            401, '{"error": "bad key"}', "https://api.openai.com/v1"
+        )
         assert "bad key" in msg
 
     def test_plain_text_body_used_as_detail(self):
-        msg = _format_upstream_error(500, "upstream exploded", "https://api.openai.com/v1")
+        msg = _format_upstream_error(
+            500, "upstream exploded", "https://api.openai.com/v1"
+        )
         assert "OpenAI is having an outage (HTTP 500)." in msg
         assert "upstream exploded" in msg
 

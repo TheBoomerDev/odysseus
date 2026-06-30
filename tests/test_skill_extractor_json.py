@@ -7,12 +7,13 @@ json.loads fails, so a perfectly good skill is silently dropped. Extraction now
 tries each '{' start position and returns the first candidate that parses to a
 JSON object.
 """
+
 from services.memory import skill_extractor
 
 
 def test_stray_brace_before_real_json_is_recovered():
     resp = (
-        'The user mentioned {placeholder} before the actual JSON '
+        "The user mentioned {placeholder} before the actual JSON "
         '{"title": "Restart the service", "steps": ["a", "b"]}'
     )
     data = skill_extractor._extract_json_object(resp)
@@ -55,4 +56,3 @@ def test_trailing_stray_brace_is_recovered():
     data = skill_extractor._extract_json_object(resp)
     assert isinstance(data, dict)
     assert data["title"] == "Restart the service"
-

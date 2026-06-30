@@ -145,9 +145,7 @@ def test_label_guard_open_is_escaped():
     msg = untrusted_context_message(evil_label, "content")
 
     parts = msg["content"].split(GUARD_OPEN)
-    assert len(parts) == 2, (
-        f"GUARD_OPEN in label was not escaped: {len(parts)} parts"
-    )
+    assert len(parts) == 2, f"GUARD_OPEN in label was not escaped: {len(parts)} parts"
 
 
 def test_label_guard_close_is_escaped():
@@ -156,9 +154,7 @@ def test_label_guard_close_is_escaped():
     msg = untrusted_context_message(evil_label, "content")
 
     parts = msg["content"].split(GUARD_CLOSE)
-    assert len(parts) == 2, (
-        f"GUARD_CLOSE in label was not escaped: {len(parts)} parts"
-    )
+    assert len(parts) == 2, f"GUARD_CLOSE in label was not escaped: {len(parts)} parts"
 
 
 def test_exactly_one_structural_open_and_close():

@@ -1,4 +1,5 @@
 """Shared loader for CLI scripts under scripts/."""
+
 import importlib.machinery
 import importlib.util
 from pathlib import Path

@@ -15,13 +15,17 @@ def test_personal_upload_paths_are_owner_scoped_and_unique(tmp_path, monkeypatch
     assert Path(bob_dir).parent == tmp_path
     assert alice_dir != bob_dir
 
-    first_path, first_stored, first_display = personal_routes._unique_personal_upload_path(
-        alice_dir,
-        "notes.txt",
+    first_path, first_stored, first_display = (
+        personal_routes._unique_personal_upload_path(
+            alice_dir,
+            "notes.txt",
+        )
     )
-    second_path, second_stored, second_display = personal_routes._unique_personal_upload_path(
-        alice_dir,
-        "notes.txt",
+    second_path, second_stored, second_display = (
+        personal_routes._unique_personal_upload_path(
+            alice_dir,
+            "notes.txt",
+        )
     )
 
     assert first_display == second_display == "notes.txt"
@@ -45,7 +49,9 @@ def test_personal_upload_paths_stay_under_upload_root(tmp_path, monkeypatch):
     assert display_name == "env"
 
 
-def test_rename_personal_upload_owner_moves_files_and_rewrites_rag(tmp_path, monkeypatch):
+def test_rename_personal_upload_owner_moves_files_and_rewrites_rag(
+    tmp_path, monkeypatch
+):
     monkeypatch.setattr(personal_routes, "UPLOADS_DIR", str(tmp_path))
 
     old_dir = Path(personal_routes._personal_upload_dir_for_owner("alice"))
@@ -55,12 +61,17 @@ def test_rename_personal_upload_owner_moves_files_and_rewrites_rag(tmp_path, mon
     manager_calls = []
     rag_calls = []
     manager = SimpleNamespace(
-        rename_directory=lambda old, new, path_map=None: manager_calls.append((old, new, dict(path_map or {}))),
+        rename_directory=lambda old, new, path_map=None: manager_calls.append(
+            (old, new, dict(path_map or {}))
+        ),
     )
     rag = SimpleNamespace(
-        rename_owner=lambda old, new, path_map=None, path_prefixes=None: rag_calls.append(
-            (old, new, dict(path_map or {}), list(path_prefixes or []))
-        ) or {"success": True, "updated_count": 1},
+        rename_owner=lambda old, new, path_map=None, path_prefixes=None: (
+            rag_calls.append(
+                (old, new, dict(path_map or {}), list(path_prefixes or []))
+            )
+            or {"success": True, "updated_count": 1}
+        ),
     )
 
     result = personal_routes.rename_personal_upload_owner(
@@ -75,7 +86,9 @@ def test_rename_personal_upload_owner_moves_files_and_rewrites_rag(tmp_path, mon
     assert old_file.exists() is False
     assert new_file.read_text(encoding="utf-8") == "alice private RAG note"
     assert result["moved_files"] == 1
-    assert manager_calls == [(str(old_dir), str(new_dir), {str(old_file): str(new_file)})]
+    assert manager_calls == [
+        (str(old_dir), str(new_dir), {str(old_file): str(new_file)})
+    ]
     assert rag_calls == [
         (
             "alice",

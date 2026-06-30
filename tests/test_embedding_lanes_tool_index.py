@@ -20,8 +20,16 @@ def test_tool_index_indexes_and_retrieves_from_available_lanes(monkeypatch):
 
     import src.embedding_lanes as lanes
 
-    monkeypatch.setattr(lanes, "_build_custom_client", lambda: FakeEmbedder(768, "nomic", "http://embeddings/v1"))
-    monkeypatch.setattr(lanes, "_build_fastembed_client", lambda: FakeEmbedder(384, "mini", "local://fastembed"))
+    monkeypatch.setattr(
+        lanes,
+        "_build_custom_client",
+        lambda: FakeEmbedder(768, "nomic", "http://embeddings/v1"),
+    )
+    monkeypatch.setattr(
+        lanes,
+        "_build_fastembed_client",
+        lambda: FakeEmbedder(384, "mini", "local://fastembed"),
+    )
 
     from src.tool_index import ToolIndex
 
@@ -37,7 +45,9 @@ def test_tool_index_builtin_indexing_fails_when_all_lanes_fail():
     custom_lane = EmbeddingLane(
         name=LANE_CUSTOM,
         client=FailingEmbedder(768, "nomic", "http://embeddings/v1"),
-        collection=FakeCollection("odysseus_tool_index_custom", metadata={"embedding_lane": "custom"}),
+        collection=FakeCollection(
+            "odysseus_tool_index_custom", metadata={"embedding_lane": "custom"}
+        ),
         collection_name="odysseus_tool_index_custom",
         model="nomic",
         url="http://embeddings/v1",
@@ -47,7 +57,9 @@ def test_tool_index_builtin_indexing_fails_when_all_lanes_fail():
     fast_lane = EmbeddingLane(
         name=LANE_FASTEMBED,
         client=FailingEmbedder(384, "mini", "local://fastembed"),
-        collection=FakeCollection("odysseus_tool_index_fastembed", metadata={"embedding_lane": "fastembed"}),
+        collection=FakeCollection(
+            "odysseus_tool_index_fastembed", metadata={"embedding_lane": "fastembed"}
+        ),
         collection_name="odysseus_tool_index_fastembed",
         model="mini",
         url="local://fastembed",
@@ -67,8 +79,12 @@ def test_tool_index_builtin_indexing_fails_when_all_lanes_fail():
 
 
 def test_tool_index_retrieval_continues_when_custom_lane_query_fails():
-    custom_collection = FakeCollection("odysseus_tool_index_custom", metadata={"embedding_lane": "custom"})
-    fast_collection = FakeCollection("odysseus_tool_index_fastembed", metadata={"embedding_lane": "fastembed"})
+    custom_collection = FakeCollection(
+        "odysseus_tool_index_custom", metadata={"embedding_lane": "custom"}
+    )
+    fast_collection = FakeCollection(
+        "odysseus_tool_index_fastembed", metadata={"embedding_lane": "fastembed"}
+    )
     fast_collection.add(
         ids=["builtin_bash"],
         embeddings=[[0.0] * 384],
@@ -117,8 +133,12 @@ def test_tool_index_retrieval_continues_when_custom_lane_query_fails():
 
 
 def test_tool_index_merges_fallback_tool_results_before_limit():
-    custom_collection = FakeCollection("odysseus_tool_index_custom", metadata={"embedding_lane": "custom"})
-    fast_collection = FakeCollection("odysseus_tool_index_fastembed", metadata={"embedding_lane": "fastembed"})
+    custom_collection = FakeCollection(
+        "odysseus_tool_index_custom", metadata={"embedding_lane": "custom"}
+    )
+    fast_collection = FakeCollection(
+        "odysseus_tool_index_fastembed", metadata={"embedding_lane": "fastembed"}
+    )
     custom_collection.add(
         ids=["builtin_one", "builtin_two"],
         embeddings=[[0.0] * 768, [0.0] * 768],
@@ -137,10 +157,12 @@ def test_tool_index_merges_fallback_tool_results_before_limit():
 
     custom_collection.query = lambda **_kwargs: {
         "ids": [["builtin_one", "builtin_two"]],
-        "metadatas": [[
-            {"tool_name": "one", "tool_type": "builtin"},
-            {"tool_name": "two", "tool_type": "builtin"},
-        ]],
+        "metadatas": [
+            [
+                {"tool_name": "one", "tool_type": "builtin"},
+                {"tool_name": "two", "tool_type": "builtin"},
+            ]
+        ],
         "distances": [[0.20, 0.21]],
     }
     fast_collection.query = lambda **_kwargs: {

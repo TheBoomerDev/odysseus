@@ -22,7 +22,9 @@ _HAS_NODE = shutil.which("node") is not None
 
 @pytest.mark.skipif(not _HAS_NODE, reason="node binary not on PATH")
 def test_streaming_segmenter_suite():
-    test_files = sorted(str(p) for p in (_REPO / "tests" / "streaming").glob("*.test.mjs"))
+    test_files = sorted(
+        str(p) for p in (_REPO / "tests" / "streaming").glob("*.test.mjs")
+    )
     assert test_files, "no streaming test files found"
 
     result = subprocess.run(

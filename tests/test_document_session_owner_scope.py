@@ -44,7 +44,9 @@ def _req(user="alice"):
 def _endpoint(method, path):
     router = droutes.setup_document_routes(MagicMock(), None)
     for route in router.routes:
-        if getattr(route, "path", None) == path and method in getattr(route, "methods", set()):
+        if getattr(route, "path", None) == path and method in getattr(
+            route, "methods", set()
+        ):
             return route.endpoint
     raise RuntimeError(f"{method} {path} not found")
 
@@ -63,38 +65,60 @@ def _seed():
     legacy_doc = str(uuid.uuid4())
     db = _TS()
     try:
-        db.add(DbSession(id=alice_session, owner="alice", name="alice", model="m", endpoint_url="http://x"))
-        db.add(DbSession(id=bob_session, owner="bob", name="bob", model="m", endpoint_url="http://x"))
-        db.add(Document(
-            id=alice_doc,
-            session_id=alice_session,
-            title="alice doc",
-            language="markdown",
-            current_content="alice body",
-            version_count=1,
-            is_active=True,
-            owner="alice",
-        ))
-        db.add(Document(
-            id=bob_doc,
-            session_id=bob_session,
-            title="bob doc",
-            language="markdown",
-            current_content="bob body",
-            version_count=1,
-            is_active=True,
-            owner="bob",
-        ))
-        db.add(Document(
-            id=legacy_doc,
-            session_id=alice_session,
-            title="legacy doc",
-            language="markdown",
-            current_content="legacy body",
-            version_count=1,
-            is_active=True,
-            owner=None,
-        ))
+        db.add(
+            DbSession(
+                id=alice_session,
+                owner="alice",
+                name="alice",
+                model="m",
+                endpoint_url="http://x",
+            )
+        )
+        db.add(
+            DbSession(
+                id=bob_session,
+                owner="bob",
+                name="bob",
+                model="m",
+                endpoint_url="http://x",
+            )
+        )
+        db.add(
+            Document(
+                id=alice_doc,
+                session_id=alice_session,
+                title="alice doc",
+                language="markdown",
+                current_content="alice body",
+                version_count=1,
+                is_active=True,
+                owner="alice",
+            )
+        )
+        db.add(
+            Document(
+                id=bob_doc,
+                session_id=bob_session,
+                title="bob doc",
+                language="markdown",
+                current_content="bob body",
+                version_count=1,
+                is_active=True,
+                owner="bob",
+            )
+        )
+        db.add(
+            Document(
+                id=legacy_doc,
+                session_id=alice_session,
+                title="legacy doc",
+                language="markdown",
+                current_content="legacy body",
+                version_count=1,
+                is_active=True,
+                owner=None,
+            )
+        )
         db.commit()
         return alice_session, bob_session, alice_doc, bob_doc, legacy_doc
     finally:
@@ -109,12 +133,17 @@ async def test_patch_document_rejects_cross_owner_session_link():
         alice_session, bob_session, _alice_doc, bob_doc, _legacy_doc = _seed()
 
         with pytest.raises(HTTPException) as exc:
-            await patch_document(_req("bob"), bob_doc, DocumentPatch(session_id=alice_session))
+            await patch_document(
+                _req("bob"), bob_doc, DocumentPatch(session_id=alice_session)
+            )
 
         assert exc.value.status_code == 404
         db = _TS()
         try:
-            assert db.query(Document).filter(Document.id == bob_doc).first().session_id == bob_session
+            assert (
+                db.query(Document).filter(Document.id == bob_doc).first().session_id
+                == bob_session
+            )
         finally:
             db.close()
     finally:
@@ -129,7 +158,9 @@ async def test_list_documents_filters_foreign_docs_in_visible_session():
         alice_session, _bob_session, alice_doc, bob_doc, legacy_doc = _seed()
         db = _TS()
         try:
-            db.query(Document).filter(Document.id == bob_doc).update({"session_id": alice_session})
+            db.query(Document).filter(Document.id == bob_doc).update(
+                {"session_id": alice_session}
+            )
             db.commit()
         finally:
             db.close()

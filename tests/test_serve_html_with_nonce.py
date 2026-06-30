@@ -7,6 +7,7 @@ fault, not a client "not found", and must surface as a logged 500 rather than
 hiding behind a 404 where 5xx alerting can't see it. These tests lock that
 intent (raised in the PR #4637 review).
 """
+
 import types
 
 import pytest

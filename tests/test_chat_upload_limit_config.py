@@ -55,7 +55,9 @@ def test_validate_file_upload_uses_configured_chat_limit(monkeypatch):
 
 def test_upload_handler_uses_configured_chat_limit(monkeypatch, tmp_path):
     monkeypatch.setenv("ODYSSEUS_CHAT_UPLOAD_MAX_BYTES", "4")
-    handler = UploadHandler(base_dir=str(tmp_path), upload_dir=str(tmp_path / "uploads"))
+    handler = UploadHandler(
+        base_dir=str(tmp_path), upload_dir=str(tmp_path / "uploads")
+    )
 
     with pytest.raises(HTTPException) as exc:
         handler.save_upload(_upload("too-large.txt", b"abcde"), client_ip="127.0.0.1")

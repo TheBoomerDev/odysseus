@@ -4,13 +4,16 @@ The handler did `n = int(gpu_count)` with no guard, so `?gpu_count=abc` (or any
 non-integer) raised ValueError -> HTTP 500. A malformed count is now ignored,
 matching how the neighbouring gpu_group param is already parsed.
 """
+
 from routes.hwfit_routes import setup_hwfit_routes
 
 
 def _get_models():
     router = setup_hwfit_routes()
     for route in router.routes:
-        if getattr(route, "path", "").endswith("/models") and "GET" in getattr(route, "methods", set()):
+        if getattr(route, "path", "").endswith("/models") and "GET" in getattr(
+            route, "methods", set()
+        ):
             return route.endpoint
     raise AssertionError("hwfit /models route not found")
 

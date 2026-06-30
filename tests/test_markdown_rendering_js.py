@@ -86,7 +86,9 @@ def _run_markdown_case(markdown: str, render_expr: str = "mod.mdToHtml(input)"):
         text=True,
     )
     if result.returncode != 0:
-        raise AssertionError(f"node failed:\nSTDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}")
+        raise AssertionError(
+            f"node failed:\nSTDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
+        )
     return json.loads(result.stdout.splitlines()[-1])["html"]
 
 

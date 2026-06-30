@@ -31,9 +31,12 @@ def _load_builtin_mcp(monkeypatch):
 def test_npx_package_from_args_prefers_package_after_y_flag(monkeypatch):
     builtin_mcp = _load_builtin_mcp(monkeypatch)
 
-    assert builtin_mcp._npx_package_from_args(
-        ["-y", "@playwright/mcp@latest", "--headless"]
-    ) == "@playwright/mcp@latest"
+    assert (
+        builtin_mcp._npx_package_from_args(
+            ["-y", "@playwright/mcp@latest", "--headless"]
+        )
+        == "@playwright/mcp@latest"
+    )
 
 
 def test_npx_cache_check_detects_scoped_package_in_npx_cache(monkeypatch, tmp_path):
@@ -49,7 +52,9 @@ def test_npx_cache_check_detects_scoped_package_in_npx_cache(monkeypatch, tmp_pa
         / "package.json"
     )
     package_json.parent.mkdir(parents=True)
-    package_json.write_text('{"name":"@playwright/mcp","version":"0.0.76"}', encoding="utf-8")
+    package_json.write_text(
+        '{"name":"@playwright/mcp","version":"0.0.76"}', encoding="utf-8"
+    )
 
     async def unexpected_exec(*args, **kwargs):
         raise AssertionError("cache hit should not shell out to npx")
@@ -58,16 +63,21 @@ def test_npx_cache_check_detects_scoped_package_in_npx_cache(monkeypatch, tmp_pa
     monkeypatch.delenv("npm_config_cache", raising=False)
     monkeypatch.setattr(builtin_mcp.asyncio, "create_subprocess_exec", unexpected_exec)
 
-    assert asyncio.run(
-        builtin_mcp._is_npx_package_cached(
-            "npx",
-            "@playwright/mcp@latest",
-            timeout_s=2,
+    assert (
+        asyncio.run(
+            builtin_mcp._is_npx_package_cached(
+                "npx",
+                "@playwright/mcp@latest",
+                timeout_s=2,
+            )
         )
-    ) is True
+        is True
+    )
 
 
-def test_npx_cache_check_falls_back_when_async_subprocess_is_unsupported(monkeypatch, tmp_path):
+def test_npx_cache_check_falls_back_when_async_subprocess_is_unsupported(
+    monkeypatch, tmp_path
+):
     builtin_mcp = _load_builtin_mcp(monkeypatch)
 
     async def unsupported_exec(*args, **kwargs):
@@ -85,13 +95,16 @@ def test_npx_cache_check_falls_back_when_async_subprocess_is_unsupported(monkeyp
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.delenv("npm_config_cache", raising=False)
 
-    assert asyncio.run(
-        builtin_mcp._is_npx_package_cached(
-            "npx.cmd",
-            "@playwright/mcp@latest",
-            timeout_s=2,
+    assert (
+        asyncio.run(
+            builtin_mcp._is_npx_package_cached(
+                "npx.cmd",
+                "@playwright/mcp@latest",
+                timeout_s=2,
+            )
         )
-    ) is True
+        is True
+    )
     assert captured["args"] == [
         "npx.cmd",
         "--no-install",
@@ -116,10 +129,13 @@ def test_npx_cache_check_fallback_treats_timeout_as_cache_miss(monkeypatch, tmp_
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.delenv("npm_config_cache", raising=False)
 
-    assert asyncio.run(
-        builtin_mcp._is_npx_package_cached(
-            "npx.cmd",
-            "@playwright/mcp@latest",
-            timeout_s=2,
+    assert (
+        asyncio.run(
+            builtin_mcp._is_npx_package_cached(
+                "npx.cmd",
+                "@playwright/mcp@latest",
+                timeout_s=2,
+            )
         )
-    ) is False
+        is False
+    )

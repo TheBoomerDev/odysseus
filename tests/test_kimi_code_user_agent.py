@@ -1,9 +1,9 @@
 """Kimi Code User-Agent fallback list and 403 detection."""
+
 from src.llm_core import (
     KIMI_CODE_USER_AGENTS,
     KIMI_CODE_USER_AGENT,
     _is_kimi_code_access_denied,
-    _is_kimi_code_url,
     _kimi_code_base_key,
     _kimi_code_ua_cache,
     _kimi_code_ua_candidates,
@@ -40,9 +40,9 @@ class TestKimiCodeUserAgents:
         assert _kimi_code_ua_candidates("https://api.openai.com/v1") == []
 
     def test_base_key_normalizes_chat_url(self):
-        assert _kimi_code_base_key("https://api.kimi.com/coding/v1/chat/completions") == (
-            "https://api.kimi.com/coding/v1"
-        )
+        assert _kimi_code_base_key(
+            "https://api.kimi.com/coding/v1/chat/completions"
+        ) == ("https://api.kimi.com/coding/v1")
 
     def test_post_retries_next_user_agent_on_403(self, monkeypatch):
         _kimi_code_ua_cache.clear()

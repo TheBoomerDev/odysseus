@@ -63,7 +63,9 @@ def _load_helpers():
     missing = [name for name in _EXPECTED_NAMES if name not in wanted]
     assert not missing, f"diffusion_server.py is missing expected helpers: {missing}"
 
-    module = ast.Module(body=[wanted[name] for name in _EXPECTED_NAMES], type_ignores=[])
+    module = ast.Module(
+        body=[wanted[name] for name in _EXPECTED_NAMES], type_ignores=[]
+    )
     ast.fix_missing_locations(module)
     ns: dict = {
         "TrustedHostMiddleware": TrustedHostMiddleware,
@@ -88,7 +90,9 @@ def test_compute_allowed_hosts_dedupes_and_strips():
     ns = _load_helpers()
     # Bind host duplicates a default + an extra duplicates a default + blanks
     # all collapse into one entry per unique value, preserving stable order.
-    out = ns["_compute_allowed_hosts"]("127.0.0.1", extras=["localhost", "", "  ", "lan.example"])
+    out = ns["_compute_allowed_hosts"](
+        "127.0.0.1", extras=["localhost", "", "  ", "lan.example"]
+    )
     assert out == ["127.0.0.1", "localhost", "::1", "lan.example"]
 
 
@@ -125,7 +129,9 @@ def test_compute_cors_origins_does_not_default_to_wildcard():
 
 def test_compute_cors_origins_honours_explicit_extras():
     ns = _load_helpers()
-    out = ns["_compute_cors_origins"](extras=["http://localhost:7000", "", "http://localhost:7000"])
+    out = ns["_compute_cors_origins"](
+        extras=["http://localhost:7000", "", "http://localhost:7000"]
+    )
     assert out == ["http://localhost:7000"]
 
 
@@ -273,8 +279,13 @@ def test_configure_security_middleware_preserves_order():
 
     ns = _load_helpers()
 
-    with_cors = _configured_app(ns, ns["_compute_cors_origins"](extras=["http://localhost:7000"]))
-    assert [m.cls for m in with_cors.user_middleware] == [CORSMiddleware, TrustedHostMiddleware]
+    with_cors = _configured_app(
+        ns, ns["_compute_cors_origins"](extras=["http://localhost:7000"])
+    )
+    assert [m.cls for m in with_cors.user_middleware] == [
+        CORSMiddleware,
+        TrustedHostMiddleware,
+    ]
 
     default_deny = _configured_app(ns, [])
     assert [m.cls for m in default_deny.user_middleware] == [TrustedHostMiddleware]

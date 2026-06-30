@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import time
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional, Any
 from pathlib import Path
@@ -23,6 +22,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Data types
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Trajectory:
@@ -58,6 +58,7 @@ PATTERNS_FILE = "data/cortex/patterns.json"
 # ---------------------------------------------------------------------------
 # Trajectory storage
 # ---------------------------------------------------------------------------
+
 
 def _ensure_dirs() -> None:
     Path(TRAJECTORIES_DIR).mkdir(parents=True, exist_ok=True)
@@ -99,7 +100,11 @@ def load_all_trajectories() -> List[Trajectory]:
 _COMMON_PATTERNS: List[Dict[str, Any]] = [
     {
         "id": "config-change",
-        "match": lambda t: "change" in t.prompt.lower() or "update" in t.prompt.lower() or "config" in t.prompt.lower(),
+        "match": lambda t: (
+            "change" in t.prompt.lower()
+            or "update" in t.prompt.lower()
+            or "config" in t.prompt.lower()
+        ),
         "description": "Repeated configuration changes",
         "skill_name": "config-update",
         "skill_content": """## Procedure
@@ -111,7 +116,14 @@ _COMMON_PATTERNS: List[Dict[str, Any]] = [
     },
     {
         "id": "dependency-install",
-        "match": lambda t: "install" in t.prompt.lower() and ("pip" in t.prompt.lower() or "npm" in t.prompt.lower() or "apt" in t.prompt.lower()),
+        "match": lambda t: (
+            "install" in t.prompt.lower()
+            and (
+                "pip" in t.prompt.lower()
+                or "npm" in t.prompt.lower()
+                or "apt" in t.prompt.lower()
+            )
+        ),
         "description": "Repeated package installations",
         "skill_name": "install-package",
         "skill_content": """## Procedure
@@ -145,16 +157,18 @@ def detect_patterns(trajs: Optional[List[Trajectory]] = None) -> List[DetectedPa
     for pat_def in _COMMON_PATTERNS:
         matches = [t for t in trajs if pat_def["match"](t)]
         if len(matches) >= 3:  # minimum 3 occurrences
-            patterns.append(DetectedPattern(
-                id=pat_def["id"],
-                description=pat_def["description"],
-                occurrence_count=len(matches),
-                example_prompts=[m.prompt[:100] for m in matches[:3]],
-                suggested_skill_name=pat_def["skill_name"],
-                suggested_skill_content=pat_def["skill_content"],
-                estimated_tokens_saved=pat_def["tokens_saved"] * len(matches),
-                confidence=min(1.0, len(matches) / 10),
-            ))
+            patterns.append(
+                DetectedPattern(
+                    id=pat_def["id"],
+                    description=pat_def["description"],
+                    occurrence_count=len(matches),
+                    example_prompts=[m.prompt[:100] for m in matches[:3]],
+                    suggested_skill_name=pat_def["skill_name"],
+                    suggested_skill_content=pat_def["skill_content"],
+                    estimated_tokens_saved=pat_def["tokens_saved"] * len(matches),
+                    confidence=min(1.0, len(matches) / 10),
+                )
+            )
 
     # Save patterns
     _ensure_dirs()
@@ -184,7 +198,8 @@ def get_improvement_stats() -> Dict:
         "tokens_saved": sum(p.estimated_tokens_saved for p in patterns),
         "success_rate": (
             sum(1 for t in trajs if t.status == "success") / len(trajs) * 100
-            if trajs else 0
+            if trajs
+            else 0
         ),
         "agents_used": len(set(t.agent for t in trajs)),
     }
