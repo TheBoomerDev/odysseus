@@ -77,7 +77,14 @@ class SDDDocuments:
     def save(self, base_dir: str = SDD_DIR) -> str:
         """Save SDD documents to disk."""
         doc_dir = Path(base_dir) / self.goal_id
-        doc_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            doc_dir.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            # Fallback to a writable location
+            import tempfile
+            fallback = Path(tempfile.gettempdir()) / "cortex-sdd" / self.goal_id
+            fallback.mkdir(parents=True, exist_ok=True)
+            doc_dir = fallback
 
         meta = {
             "goal_id": self.goal_id,

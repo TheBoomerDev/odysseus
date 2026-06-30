@@ -1404,6 +1404,9 @@ def function_call_to_tool_block(name: str, arguments: str) -> Optional[ToolBlock
                         "manage_endpoints", "manage_mcp", "manage_webhooks",
                         "manage_tokens", "manage_documents", "manage_settings"):
         content = json.dumps(args)
+    elif tool_type in ("route_prompt", "csuite_query", "decompose_goal",
+                       "list_csuite_roles", "router_categories"):
+        content = json.dumps(args)
     elif tool_type == "ask_teacher":
         content = args.get("model", "auto") + "\n" + args.get("problem", "")
     elif tool_type == "ask_user":

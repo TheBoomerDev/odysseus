@@ -943,6 +943,14 @@ async def _startup_event():
     # GC tasks created with `asyncio.create_task(...)` before they finish.
     _startup_tasks: list[asyncio.Task] = getattr(app.state, "_startup_tasks", [])
     app.state._startup_tasks = _startup_tasks
+
+    # Start cortex heartbeat (health checks, stale goal detection)
+    try:
+        from routes.cortex_routes import _heartbeat
+        _startup_tasks.append(asyncio.create_task(_heartbeat.start()))
+        logger.info("Cortex heartbeat started")
+    except Exception as e:
+        logger.warning("Failed to start cortex heartbeat: %s", e)
     if upload_cleanup_func:
         upload_cleanup_task = asyncio.create_task(upload_cleanup_func())
     # Always-on monitor that auto-continues the agent when a background bash

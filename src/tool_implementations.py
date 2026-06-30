@@ -19,6 +19,14 @@ from src.tools.system import (  # noqa: F401
     do_api_call, do_app_api,
     _APP_API_BLOCKLIST_PREFIXES, _APP_API_BLOCKLIST_METHOD_PATH,
 )
+# Cortex tools (SmartRouter, C-Suite, Goals)
+from cortex.tools import (  # noqa: F401
+    do_route_prompt,
+    do_csuite_query,
+    do_decompose_goal,
+    do_list_csuite_roles,
+    do_router_categories,
+)
 # Admin manage_* tools (endpoints/mcp/webhooks/tokens/settings) live in
 # src/agent_tools/admin_tools after the upstream registry migration (#3629).
 # Re-exported lazily via __getattr__: src.agent_tools.__init__ imports this

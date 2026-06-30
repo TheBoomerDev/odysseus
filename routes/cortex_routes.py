@@ -49,10 +49,14 @@ def setup_cortex_routes(
         """List all CORTEX submodule capabilities."""
         return {
             "goals": {"decompose": True, "templates": 3},
-            "router": {"route": True, "agents_supported": 5},
+            "router": {"route": True, "smart_route": True, "categories": 9, "agents_supported": 5},
             "improve": {"trajectories": True, "pattern_detection": True},
             "skills_sh": {"search": True, "install": skills_manager is not None},
             "cli_invoker": {"discover": True, "invoke": True},
+            "smart_router": {"models": 24, "providers": 8, "categories": 9},
+            "csuite": {"roles": 6, "query": True, "context": True},
+            "sdd": {"generate": True, "pipeline_steps": 7},
+            "heartbeat": {"status": True, "tick": True, "interval_s": 60},
         }
 
     # ------------------------------------------------------------------
