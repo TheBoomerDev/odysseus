@@ -610,6 +610,10 @@ app.include_router(memory_router)
 from routes.skills_routes import setup_skills_routes
 app.include_router(setup_skills_routes(skills_manager))
 
+# Cortex (CORTEX capabilities: goals, router, improve, CLI, skills.sh)
+from routes.cortex_routes import setup_cortex_routes
+app.include_router(setup_cortex_routes(skills_manager=skills_manager))
+
 # Chat
 from routes.chat_routes import setup_chat_routes
 app.include_router(setup_chat_routes(
