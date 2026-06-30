@@ -13,8 +13,17 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 
 from cortex import goals, router as cortex_router, improve, skills_sh, cli_invoker
+from cortex.smart_router import SmartRouter, TaskCategory, RoutingPriority
+from cortex.csuite import CSuiteOrchestrator, CSuiteRole, CompanyContext
+from cortex.sdd import SDDGenerator, PipelineOrchestrator
 
 logger = logging.getLogger(__name__)
+
+# Shared instances
+_smart_router = SmartRouter()
+_csuite = CSuiteOrchestrator()
+_sdd_gen = SDDGenerator()
+_pipeline = PipelineOrchestrator(_sdd_gen)
 
 
 def setup_cortex_routes(
@@ -229,6 +238,139 @@ def setup_cortex_routes(
         result = skills_sh.install_skill(skills_manager, name)
         if not result.get("ok"):
             raise HTTPException(status_code=404, detail=result.get("error", "install failed"))
+        return result
+
+    # ==================================================================
+    # SMART ROUTER
+    # ==================================================================
+
+    # GET /api/cortex/router/categories
+    @r.get("/router/categories")
+    async def router_categories():
+        """List all routing categories with recommended models."""
+        return {"categories": _smart_router.list_categories()}
+
+    # POST /api/cortex/router/route-smart
+    @r.post("/router/route-smart")
+    async def smart_route(body: dict):
+        """Route a prompt to the best model/provider using SmartRouter."""
+        prompt = body.get("prompt", "")
+        if not prompt.strip():
+            raise HTTPException(status_code=400, detail="prompt is required")
+
+        # Parse optional category
+        cat_str = body.get("category")
+        category = None
+        if cat_str:
+            try:
+                category = TaskCategory(cat_str)
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"unknown category: {cat_str}")
+
+        priority_str = body.get("priority", "quality")
+        try:
+            priority = RoutingPriority(priority_str)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"unknown priority: {priority_str}")
+
+        result = _smart_router.route(prompt, category=category, priority=priority)
+        return result
+
+    # ==================================================================
+    # C-SUITE
+    # ==================================================================
+
+    # GET /api/cortex/csuite
+    @r.get("/csuite")
+    async def csuite_list_roles():
+        """List all available C-Suite executive roles."""
+        return {"roles": _csuite.list_roles()}
+
+    # GET /api/cortex/csuite/{role}
+    @r.get("/csuite/{role}")
+    async def csuite_role_info(role: str):
+        """Get information about a specific C-Suite role."""
+        try:
+            role_enum = CSuiteRole(role)
+        except ValueError:
+            raise HTTPException(status_code=404, detail=f"unknown role: {role}")
+        return _csuite.get_role_info(role_enum)
+
+    # POST /api/cortex/csuite/{role}/query
+    @r.post("/csuite/{role}/query")
+    async def csuite_query(role: str, body: dict):
+        """Query a C-Suite agent with a question.
+
+        Returns the prepared prompt for Odysseus to use with its LLM.
+        """
+        question = body.get("question", "")
+        if not question.strip():
+            raise HTTPException(status_code=400, detail="question is required")
+        try:
+            role_enum = CSuiteRole(role)
+        except ValueError:
+            raise HTTPException(status_code=404, detail=f"unknown role: {role}")
+
+        # Update context if provided
+        ctx = body.get("context")
+        if ctx:
+            _csuite.update_context(CompanyContext(**ctx))
+
+        result = _csuite.prepare_prompt(role_enum, question)
+        return result
+
+    # POST /api/cortex/csuite/context
+    @r.post("/csuite/context")
+    async def csuite_set_context(body: dict):
+        """Set the shared company context for C-Suite agents."""
+        ctx = CompanyContext(**body)
+        _csuite.update_context(ctx)
+        return {"ok": True, "context": {
+            "name": ctx.name,
+            "industry": ctx.industry,
+            "stage": ctx.stage,
+            "team_size": ctx.team_size,
+        }}
+
+    # ==================================================================
+    # SDD PIPELINE
+    # ==================================================================
+
+    # GET /api/cortex/sdd/steps
+    @r.get("/sdd/steps")
+    async def sdd_list_steps():
+        """List all SDD pipeline steps."""
+        return {"steps": _pipeline.list_steps()}
+
+    # POST /api/cortex/sdd/generate
+    @r.post("/sdd/generate")
+    async def sdd_generate(body: dict):
+        """Generate SDD documents for a goal."""
+        goal_id = body.get("goal_id", "")
+        goal = body.get("goal", "")
+        if not goal_id or not goal:
+            raise HTTPException(status_code=400, detail="goal_id and goal are required")
+        docs = _sdd_gen.generate_all(goal_id, goal)
+        path = docs.save()
+        return {
+            "goal_id": goal_id,
+            "documents_path": path,
+            "spec": docs.spec_content[:500],
+            "plan": docs.plan_content[:500],
+            "tasks": docs.tasks_content[:500],
+        }
+
+    # POST /api/cortex/sdd/pipeline
+    @r.post("/sdd/pipeline")
+    async def sdd_run_pipeline(body: dict):
+        """Run the full SDD pipeline."""
+        goal_id = body.get("goal_id", "")
+        goal = body.get("goal", "")
+        skip = body.get("skip")
+        only = body.get("only")
+        if not goal_id or not goal:
+            raise HTTPException(status_code=400, detail="goal_id and goal are required")
+        result = _pipeline.run(goal_id, goal, skip=skip, only=only)
         return result
 
     return r

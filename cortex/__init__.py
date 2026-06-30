@@ -14,9 +14,13 @@ Python or via the `/api/cortex/*` FastAPI routes in routes/cortex_routes.py.
 """
 
 from . import goals
-from . import router
+from . import router as cortex_router
 from . import improve
 from . import skills_sh
 from . import cli_invoker
+from . import smart_router
+from . import csuite
+from . import sdd
 
-__all__ = ["goals", "router", "improve", "skills_sh", "cli_invoker"]
+__all__ = ["goals", "cortex_router", "improve", "skills_sh", "cli_invoker",
+           "smart_router", "csuite", "sdd"]
