@@ -104,3 +104,11 @@ _scratch/
 /odysseus/
 repomix-output.md
 test_venv/
+
+# Generated project scaffolding (test artifacts)
+projects/
+
+# Coverage reports
+.coverage
+htmlcov/
+coverage/

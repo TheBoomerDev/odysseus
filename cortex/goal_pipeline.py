@@ -28,6 +28,7 @@ from cortex.hermes_bridge import HermesResponse, chat_async
 from cortex.hermes_agents import HermesAgentRegistry, get_registry
 from cortex.cli_invoker import invoke
 from cortex.smart_router import SmartRouter
+from cortex.codegen.engine import CodegenEngine, create_codegen_engine
 
 logger = logging.getLogger(__name__)
 
@@ -87,12 +88,20 @@ class GoalPipeline:
         sdd_generator: Optional[SDDGenerator] = None,
         smart_router: Optional[SmartRouter] = None,
         agent_registry: Optional[HermesAgentRegistry] = None,
+        codegen_provider: str = "hermes",
+        codegen_model: Optional[str] = None,
+        codegen_api_key: Optional[str] = None,
+        codegen_profile: str = "swarm1",
     ):
         self._tracker = tracker or GoalTracker()
         self._sdd = sdd_generator or SDDGenerator()
         self._router = smart_router or SmartRouter()
         self._agents = agent_registry or get_registry()
         self._agents.refresh()
+        self._codegen_provider = codegen_provider
+        self._codegen_model = codegen_model
+        self._codegen_api_key = codegen_api_key
+        self._codegen_profile = codegen_profile
 
     async def run(
         self,
@@ -114,8 +123,13 @@ class GoalPipeline:
             # Phase 1: SDD
             await self._phase_sdd(goal_id, goal, result, context or {})
 
-            # Phase 2: Route + Dispatch each task
-            await self._phase_execute(goal_id, result)
+            # Phase 1b: Codegen (if goal is code_generation)
+            goal_type = (context or {}).get("goal_type", "") or self._detect_goal_type(goal)
+            if goal_type == "code_generation":
+                await self._phase_codegen(goal_id, goal, result, context or {})
+            else:
+                # Phase 2: Route + Dispatch each task
+                await self._phase_execute(goal_id, result)
 
             # Phase 3: Verify
             await self._phase_verify(goal_id, result)
@@ -268,6 +282,98 @@ class GoalPipeline:
             return best.name
 
         return preferred_agent if preferred_agent != "auto" else None
+
+    @staticmethod
+    def _detect_goal_type(goal: str) -> str:
+        """Detect whether a goal is code_generation or general task execution."""
+        code_keywords = [
+            "implement", "build", "code", "develop", "create app",
+            "create page", "landing page", "website", "web app",
+            "frontend", "backend", "api", "component", "scaffold",
+            "generate", "refactor", "migrate", "starter", "template",
+        ]
+        goal_lower = goal.lower()
+        for kw in code_keywords:
+            if kw in goal_lower:
+                return "code_generation"
+        return "general"
+
+    async def _phase_codegen(
+        self,
+        goal_id: str,
+        goal: str,
+        result: PipelineResult,
+        context: Dict[str, Any],
+    ) -> None:
+        """Execute code generation via CodegenEngine.
+
+        Runs the two-stage pipeline (Plan → Tool Loop) and tracks
+        progress in the GoalSession.
+        """
+        step = PipelineStep(
+            id=f"{goal_id}-codegen",
+            description=f"Code generation for: {goal[:60]}",
+            backend=self._codegen_provider,
+            target=self._codegen_model or self._codegen_profile,
+            prompt=goal,
+            timeout=600,
+        )
+        result.steps.append(step)
+
+        # Create codegen engine
+        engine = create_codegen_engine(
+            provider=self._codegen_provider,
+            model=self._codegen_model,
+            api_key=self._codegen_api_key,
+            profile=self._codegen_profile,
+        )
+
+        start = time.time()
+        files_written: List[str] = []
+        error: Optional[str] = None
+
+        try:
+            async for event in engine.run(
+                project_id=goal_id,
+                prompt=goal,
+                starter_name="next",
+                goal=goal,
+            ):
+                if event.type == "file_write":
+                    files_written.append(event.path)
+                elif event.type == "error":
+                    error = event.message
+                    if not getattr(event, "recoverable", True):
+                        break
+                elif event.type == "status":
+                    logger.info("  [%s] %s: %s", goal_id, event.stage, event.note)
+
+        except Exception as e:
+            error = str(e)
+            logger.exception("Codegen phase failed for %s", goal_id)
+
+        step.duration_ms = (time.time() - start) * 1000
+
+        if error:
+            step.status = "failed"
+            step.error = error
+            step.result = f"Generated {len(files_written)} file(s) before error"
+        else:
+            step.status = "success"
+            step.result = (
+                f"Generated {len(files_written)} file(s) via "
+                f"{self._codegen_provider}"
+            )
+            # Update tracker
+            session = self._tracker.get_goal(goal_id)
+            if session:
+                self._tracker.update_progress(
+                    goal_id,
+                    progress=1.0,
+                    task_count=1,
+                    tasks_completed=1,
+                    metadata={"files_written": files_written},
+                )
 
     async def _phase_verify(
         self,

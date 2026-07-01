@@ -3,14 +3,16 @@ cortex — CORTEX capabilities for Odysseus.
 
 This module ports the unique CORTEX features into the Odysseus fork:
 
-    goals/       — Goal decomposition engine (templates + heuristic)
-    router/      — Multi-agent routing/scorer
-    improve/     — Self-improvement loop (trajectories, patterns, SkillOpt)
-    skills_sh/   — Bridge to skills.sh marketplace
-    cli_invoker/ — CLI agent orchestrator
+    goals/       - Goal decomposition engine (templates + heuristic)
+    router/      - Multi-agent routing/scorer
+    improve/     - Self-improvement loop (trajectories, patterns, SkillOpt)
+    skills_sh/   - Bridge to skills.sh marketplace
+    cli_invoker/ - CLI agent orchestrator
+    codegen/     - Code generation engine (plan to tool loop)
+    hermes_*    - Hermes Agent bridge and agent registry
 
 Each submodule exposes a public API that can be used directly from
-Python or via the `/api/cortex/*` FastAPI routes in routes/cortex_routes.py.
+Python or via the /api/cortex/* FastAPI routes in routes/cortex_routes.py.
 """
 
 from . import goals
@@ -22,6 +24,10 @@ from . import smart_router
 from . import csuite
 from . import sdd
 from . import heartbeat
+from . import codegen
+from . import project_storage
+from . import docs_generator
+from . import git_automation
 
 __all__ = [
     "goals",
@@ -33,4 +39,8 @@ __all__ = [
     "csuite",
     "sdd",
     "heartbeat",
+    "codegen",
+    "project_storage",
+    "docs_generator",
+    "git_automation",
 ]
