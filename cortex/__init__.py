@@ -28,6 +28,7 @@ from . import codegen
 from . import project_storage
 from . import docs_generator
 from . import git_automation
+from . import skills
 
 __all__ = [
     "goals",
@@ -43,4 +44,5 @@ __all__ = [
     "project_storage",
     "docs_generator",
     "git_automation",
+    "skills",
 ]
